@@ -1,9 +1,32 @@
+let userInput = "";
+let stage = "question1";
+let stars = [];
+let loadingProgress = 0;
+let loadingStartTime = 0;
+let loadingDuration = 5000;
+
+let factTexts = [
+  "디즈니 영화 오프닝에서 배경 음악으로 사용되는 음악의 제목이 피노키오의 주제곡인 ‘When you wish upon a star’라는 사실을 알고 있었나요? 나무 인형 피노키오를 만든 제페토 할아버지가 밤하늘의 밝은 별을 보며 피노키오가 진짜 사람이 되기를 소원하자, 그 소원을 들은 요정들이 피노키오에게 생명을 불어넣어 주었죠."
+];
+
+function stars_loc() {
+  return [
+    { x: width * 0.25, y: height * 0.30 },
+    { x: width * 0.32, y: height * 0.34 },
+    { x: width * 0.39, y: height * 0.38 },
+    { x: width * 0.45, y: height * 0.44 },
+    { x: width * 0.52, y: height * 0.48 },
+    { x: width * 0.58, y: height * 0.51 },
+    { x: width * 0.64, y: height * 0.56 }
+  ];
+}
+
 let mode = "main";      // "main" 또는 "intro"
 let introFrame = 0;
 let textCount = 0;
 
 function setup() {
-  createCanvas(1920 * 0.4, 1080 * 0.4);
+  createCanvas(windowWidth, windowHeight);
 }
 
 function draw() {
@@ -118,24 +141,102 @@ function intro_text() {
 
 //질문 1
 
-function question_1(){
-  //별의 위치 지정하는 질문 
-  input_1()
+let inputBox;
+
+function question_1() {
+  fill(0);
+  textAlign(CENTER, CENTER);
+  textSize(28);
+  text("2025년에 시간과 에너지를 가장 많이 투자한 일은 무엇이었나요?\n그 일의 성과는 어떠했나요?",
+       width / 2, height / 2 - 120);
+
+  if (!inputBox) {
+    inputBox = createInput("");   
+    inputBox.attribute("placeholder", "여기에 답을 입력하세요...");
+    
+    inputBox.position(width/2 - 250, height/2 - 30);
+    inputBox.size(500, 60);
+
+    inputBox.style("font-size", "22px");
+    inputBox.style("padding", "12px 16px");
+    inputBox.style("border", "2px solid rgba(255,255,255,0.3)");
+    inputBox.style("border-radius", "12px");
+    inputBox.style("background", "rgba(255,255,255,0.8)");
+    inputBox.style("outline", "none");
+  }
 }
 
-function input_1(){
-  //텍스트 입력받고
-  //LLM 실행
+
+function keyTyped() {
+  if (stage === "question1" && key !== "Enter") {
+    userInput += key;
+  }
 }
 
-function loading_1(){
-  stars_loc()
-  //디즈니 관련 내용 설명
+function keyPressed() {
+  if (stage === "question1" && keyCode === ENTER) {
+    input_1();
+  }
 }
 
-function stars_loc(){
-  //별 n개 생성
+
+function input_1() {
+  if (inputBox) {
+    userInput = inputBox.value();
+    inputBox.remove();
+    inputBox = null;
+  }
+
+  console.log("사용자 입력:", userInput);
+
+  stage = "loading1";
+
+  loadingStartTime = millis();
+
+  stars = [];
+  loadingProgress = 0;
 }
+
+
+function loading_1() {
+  let elapsed = millis() - loadingStartTime;
+
+  fill(255);
+  textSize(24);
+  textAlign(CENTER, CENTER);
+  text("생각을 정리하는 중...", width / 2, height / 2 - 200);
+
+  fill(255, 210);
+  rect(40, height - 180, width - 80, 140, 20);
+
+  fill(40);
+  textAlign(LEFT, TOP);
+  textSize(18);
+  text(factTexts[0], 60, height - 160, width - 120);
+
+
+  if (elapsed < loadingDuration) {
+    let dots = floor((elapsed / 300) % 4);
+    text("⋆".repeat(dots), width / 2, height / 2 - 160);
+    return;
+  }
+
+  if (stars.length === 0) {
+    stars = stars_loc();
+  }
+
+  loadingProgress += 0.01;
+  if (loadingProgress > 1) loadingProgress = 1;
+
+  for (let i = 0; i < stars.length * loadingProgress; i++) {
+    let s = stars[i];
+    fill(255);
+    ellipse(s.x, s.y, 10, 10);
+  }
+
+  if (loadingProgress >= 1) stage = "question2";
+}
+
 
 //질문 2
 
