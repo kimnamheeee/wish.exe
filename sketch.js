@@ -1,5 +1,4 @@
 let userInput = "";
-let stage = "question1";
 let stars = [];
 let loadingProgress = 0;
 let loadingStartTime = 0;
@@ -31,13 +30,33 @@ function setup() {
 
 function draw() {
   backgroundStar(80);
+  console.log(mode);
 
-  if (mode === "main") {
-    main_frame();
-  } else if (mode === "intro") {
-    intro();
-  } else if (mode === "question_1"){
-    //question_1()
+  switch (mode) {
+    case "main":
+      main_frame();
+      break;
+    case "intro":
+      intro();
+      break;
+    case "loading_1":
+      loading_1();
+      break;
+    case "question_1":
+      question_1();
+      break;
+    case "loading_2":
+      loading_2();
+      break;
+    case "question_2":
+      question_2();
+      break;
+    case "loading_3":
+      loading_3();
+      break;
+    case "question_3":
+      question_3();
+      break;
   }
 }
 
@@ -55,6 +74,8 @@ function keyPressed() {
     } else {
       mode = "question_1";  // 마지막 문장 보고 나면 다음 화면으로
     }
+  } else if (keyCode === ENTER && mode === "question_1") {
+    input_1();
   }
 }
 
@@ -91,7 +112,6 @@ function intro() {
   rect(0, 0, width, height);
 
   intro_text()
-  
   
 }
 
@@ -144,7 +164,7 @@ function intro_text() {
 let inputBox;
 
 function question_1() {
-  fill(0);
+  fill(255);
   textAlign(CENTER, CENTER);
   textSize(28);
   text("2025년에 시간과 에너지를 가장 많이 투자한 일은 무엇이었나요?\n그 일의 성과는 어떠했나요?",
@@ -168,17 +188,10 @@ function question_1() {
 
 
 function keyTyped() {
-  if (stage === "question1" && key !== "Enter") {
+  if (mode === "question_1" && key !== "Enter") {
     userInput += key;
   }
 }
-
-function keyPressed() {
-  if (stage === "question1" && keyCode === ENTER) {
-    input_1();
-  }
-}
-
 
 function input_1() {
   if (inputBox) {
@@ -189,7 +202,7 @@ function input_1() {
 
   console.log("사용자 입력:", userInput);
 
-  stage = "loading1";
+  mode = "loading_1";
 
   loadingStartTime = millis();
 
@@ -234,7 +247,7 @@ function loading_1() {
     ellipse(s.x, s.y, 10, 10);
   }
 
-  if (loadingProgress >= 1) stage = "question2";
+  if (loadingProgress >= 1) mode = "question_2";
 }
 
 
