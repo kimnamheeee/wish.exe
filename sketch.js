@@ -8,6 +8,40 @@ let factTexts = [
   "디즈니 영화 오프닝에서 배경 음악으로 사용되는 음악의 제목이 피노키오의 주제곡인 ‘When you wish upon a star’라는 사실을 알고 있었나요? 나무 인형 피노키오를 만든 제페토 할아버지가 밤하늘의 밝은 별을 보며 피노키오가 진짜 사람이 되기를 소원하자, 그 소원을 들은 요정들이 피노키오에게 생명을 불어넣어 주었죠."
 ];
 
+function renderMainStars() {
+  for (let s of stars) {
+    fill(255);
+    noStroke();
+    ellipse(s.x, s.y, 10, 10);
+  }
+}
+
+function renderQuestionText(txt) {
+  fill(255);
+  textAlign(CENTER, CENTER);
+  textSize(28);
+  
+  text(txt, width / 2, height * 0.7);
+}
+
+function renderAnswerInput() {
+  if (!inputBox) {
+    inputBox = createInput("");   
+    inputBox.attribute("placeholder", "여기에 답을 입력하세요...");
+    
+    inputBox.position(width/2 - 250, height * 0.8);
+    inputBox.size(500, 60);
+
+    inputBox.style("font-size", "22px");
+    inputBox.style("padding", "12px 16px");
+    inputBox.style("border", "2px solid rgba(255,255,255,0.3)");
+    inputBox.style("border-radius", "12px");
+    inputBox.style("background", "rgba(255,255,255,0.8)");
+    inputBox.style("outline", "none");
+  }
+}
+
+
 function stars_loc() {
   return [
     { x: width * 0.25, y: height * 0.30 },
@@ -30,7 +64,6 @@ function setup() {
 
 function draw() {
   backgroundStar(80);
-  console.log(mode);
 
   switch (mode) {
     case "main":
@@ -164,26 +197,9 @@ function intro_text() {
 let inputBox;
 
 function question_1() {
-  fill(255);
-  textAlign(CENTER, CENTER);
-  textSize(28);
-  text("2025년에 시간과 에너지를 가장 많이 투자한 일은 무엇이었나요?\n그 일의 성과는 어떠했나요?",
-       width / 2, height / 2 - 120);
+  renderQuestionText("2025년에 시간과 에너지를 가장 많이 투자한 일은 무엇이었나요?\n그 일의 성과는 어떠했나요?");
 
-  if (!inputBox) {
-    inputBox = createInput("");   
-    inputBox.attribute("placeholder", "여기에 답을 입력하세요...");
-    
-    inputBox.position(width/2 - 250, height/2 - 30);
-    inputBox.size(500, 60);
-
-    inputBox.style("font-size", "22px");
-    inputBox.style("padding", "12px 16px");
-    inputBox.style("border", "2px solid rgba(255,255,255,0.3)");
-    inputBox.style("border-radius", "12px");
-    inputBox.style("background", "rgba(255,255,255,0.8)");
-    inputBox.style("outline", "none");
-  }
+  renderAnswerInput();
 }
 
 
@@ -254,8 +270,9 @@ function loading_1() {
 //질문 2
 
 function question_2(){
-  //stars_loc()의 정보 받아오기
-  //별의 색상 지정하는 질문
+  renderMainStars()
+  renderQuestionText("2025년에 가장 많이 했던 생각은 무엇인가요?\n2025년에 가장 자주 했던 말은 무엇인가요?");
+  renderAnswerInput()
   input_2()
 }
 
