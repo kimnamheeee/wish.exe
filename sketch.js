@@ -4,13 +4,106 @@ let loadingProgress = 0;
 let loadingStartTime = 0;
 let loadingDuration = 5000;
 
+let isCallingLLM = false;
+let emotionResult = null;
+let hasCalledLLM = false;
+
+let starColorIndex = 0;
+let targetColor = null;
+
+
+const emotionColors = {
+  0: { r:180, g:200, b:255 },
+  1: { r:90,  g:90,  b:160 },
+  2: { r:255, g:230, b:100 },
+  3: { r:255, g:120, b:90  },
+  4: { r:255, g:200, b:30  },
+};
+
+
+const collectedEmotions = [];
+
+const LLM_API_URL = "https://p5-llm-server.vercel.app/api/llm"
+
+const SYSTEM_PROMPT = `
+You are an emotion classifier for an art installation.
+Your ONLY job is to read the user's input text and classify it
+into a SINGLE emotion ID from 0 to 5.
+
+EMOTION MAPPING (fixed):
+0 = Calm / Neutral
+1 = Sadness
+2 = Hope / Determination
+3 = Fear / Anxiety
+4 = Happiness / Excitement
+
+RULES:
+- ALWAYS return an object with this exact shape:
+  {"emotion": <number>}
+- <number> must be a single integer from 0 to 4.
+- DO NOT include explanations, adjectives, reasoning, or additional text.
+- DO NOT output anything except valid JSON.
+
+If the user input is unclear, ambiguous, or overly complex,
+still select the closest emotion ID.
+Never ask for clarification.
+Never output any natural language.
+
+Your final answer MUST be valid JSON and nothing else.
+No markdown.
+No backticks.
+No comments.
+No text before or after the JSON.
+
+Examples:
+User: "올해 너무 힘들었는데 그래도 버텼어요."
+Return: {"emotion": 2}
+
+User: "혼란스럽고 뭐가 맞는지 모르겠어요."
+Return: {"emotion": 5}
+
+User: "그냥 담담한 하루였어요."
+Return: {"emotion": 0}
+`;
+
+
+async function callLLM(systemPrompt, userText) {
+  if (isCallingLLM) return;
+  isCallingLLM = true;
+  console.log("CALLING LLM");
+  const res = await fetch(LLM_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userText },
+      ],
+    }),
+  });
+
+  await delay(5000);
+
+  const data = await res.json();
+  const reply = data.choices?.[0]?.message?.content ?? "(no reply)";
+  isCallingLLM = false;
+  return reply;
+}
+
 let factTexts = [
   "디즈니 영화 오프닝에서 배경 음악으로 사용되는 음악의 제목이 피노키오의 주제곡인 ‘When you wish upon a star’라는 사실을 알고 있었나요? 나무 인형 피노키오를 만든 제페토 할아버지가 밤하늘의 밝은 별을 보며 피노키오가 진짜 사람이 되기를 소원하자, 그 소원을 들은 요정들이 피노키오에게 생명을 불어넣어 주었죠."
 ];
 
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 function renderMainStars() {
   for (let s of stars) {
-    fill(255);
+    const { r, g, b } = s.color;
+    fill(r, g, b);
     noStroke();
     ellipse(s.x, s.y, 10, 10);
   }
@@ -22,6 +115,14 @@ function renderQuestionText(txt) {
   textSize(28);
   
   text(txt, width / 2, height * 0.7);
+}
+
+function getUserInput() {
+  if (inputBox) {
+    userInput = inputBox.value();
+    inputBox.remove();
+    inputBox = null;
+  }
 }
 
 function renderAnswerInput() {
@@ -43,7 +144,7 @@ function renderAnswerInput() {
 
 
 function stars_loc() {
-  return [
+  const base = [
     { x: width * 0.25, y: height * 0.30 },
     { x: width * 0.32, y: height * 0.34 },
     { x: width * 0.39, y: height * 0.38 },
@@ -52,6 +153,11 @@ function stars_loc() {
     { x: width * 0.58, y: height * 0.51 },
     { x: width * 0.64, y: height * 0.56 }
   ];
+  
+  return base.map(s => ({
+    ...s,
+    color: { r: 255, g: 255, b: 255 }
+  }));
 }
 
 let mode = "main";      // "main" 또는 "intro"
@@ -64,6 +170,14 @@ function setup() {
 
 function draw() {
   backgroundStar(80);
+
+  // if (mode === "question_2") {
+  //   question_2();
+  // } else if (mode === "loading_2") {
+  //   loading_2();
+  // } else if (mode === "question_3") {
+  //   question_3();  
+  // }
 
   switch (mode) {
     case "main":
@@ -109,6 +223,8 @@ function keyPressed() {
     }
   } else if (keyCode === ENTER && mode === "question_1") {
     input_1();
+  } else if (keyCode === ENTER && mode === "question_2") {
+    input_2();
   }
 }
 
@@ -210,18 +326,9 @@ function keyTyped() {
 }
 
 function input_1() {
-  if (inputBox) {
-    userInput = inputBox.value();
-    inputBox.remove();
-    inputBox = null;
-  }
-
-  console.log("사용자 입력:", userInput);
-
+  getUserInput();
   mode = "loading_1";
-
   loadingStartTime = millis();
-
   stars = [];
   loadingProgress = 0;
 }
@@ -273,29 +380,69 @@ function question_2(){
   renderMainStars()
   renderQuestionText("2025년에 가장 많이 했던 생각은 무엇인가요?\n2025년에 가장 자주 했던 말은 무엇인가요?");
   renderAnswerInput()
-  input_2()
 }
 
 function input_2(){
-  //텍스트 입력받고
-  //LLM 실행
+  getUserInput();
+  mode = "loading_2";
+  emotionResult = null;
 }
 
 function loading_2(){
-  stars_col()
-  about_stars()
+  renderMainStars()
+
+  if (!hasCalledLLM) {
+    hasCalledLLM = true;
+    callLLM(SYSTEM_PROMPT, userInput).then(async result => {
+      try {
+        emotionResult = JSON.parse(result).emotion;
+        collectedEmotions.push(emotionResult);
+        targetColor = emotionColors[emotionResult];
+      } catch (e) {
+        console.error("JSON parse error:", result);
+      }
+      isCallingLLM = false; 
+    });
+  }
+
+  textSize(24);
+  textAlign(CENTER, CENTER);
+  fill(255);
+
+  const fact = about_stars();
+  text(fact, width / 2, height * 0.8);
+
+  if (targetColor !== null) {
+    startStarColoring(emotionResult);
+  }
 }
 
-function stars_col(){
-  //별 색상 정하기
-  //stars_loc의 정보받아오기
-  //색 입히기
+function startStarColoring(emotionId) {
+  targetColor = emotionColors[emotionId];
+  starColorIndex = 0;
+
+  colorNextStar();
 }
+
+function colorNextStar() {
+  if (starColorIndex >= stars.length) {
+    mode = "question_3";
+    return;
+  }
+
+  stars[starColorIndex].color = { ...targetColor };
+  starColorIndex++;
+
+  setTimeout(colorNextStar, 1000);
+}
+
+
 
 function about_stars(){
   //별자리와 관련한 사실들을 리스트로 만들어 random추출하기
-  abouts = []
-  fact = abouts[random(0, len(abouts))]
+  abouts = ["별자리 , 천문학 에서 특정 그룹 중 하나적어도 이름을 붙인 사람들이 상상했던 별들은\n 하늘에서 눈에 띄는 물체나 생물의 형태를 이룬다고 믿었습니다."]
+  const fact = random(abouts);
+  return fact;
   //fact 전달
 }
 
@@ -303,6 +450,8 @@ function about_stars(){
 //질문 3
 
 function question_3(){
+  hasCalledLLM = false;
+  renderMainStars()
   //stars_col()의 정보 받아오기
   //별의 밝기 지정하는 질문
   input_3()
