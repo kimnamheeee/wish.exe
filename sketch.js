@@ -1,5 +1,5 @@
 let userInput = "";
-let stars = [];
+let back_stars = [];
 let loadingProgress = 0;
 let loadingStartTime = 0;
 let loadingDuration = 5000;
@@ -11,6 +11,11 @@ let hasCalledLLM = false;
 let starColorIndex = 0;
 let targetColor = null;
 
+let starLumIndex = 0;
+let targetLum = null;
+
+let factLoading = null;
+
 
 const emotionColors = {
   0: { r:180, g:200, b:255 },
@@ -18,6 +23,14 @@ const emotionColors = {
   2: { r:255, g:230, b:100 },
   3: { r:255, g:120, b:90  },
   4: { r:255, g:200, b:30  },
+};
+
+const emotionLums = {
+  0: 13,
+  1: 16,
+  2: 19,
+  3: 21,
+  4: 24,
 };
 
 
@@ -93,7 +106,10 @@ async function callLLM(systemPrompt, userText) {
 }
 
 let factTexts = [
-  "디즈니 영화 오프닝에서 배경 음악으로 사용되는 음악의 제목이 피노키오의 주제곡인 ‘When you wish upon a star’라는 사실을 알고 있었나요? 나무 인형 피노키오를 만든 제페토 할아버지가 밤하늘의 밝은 별을 보며 피노키오가 진짜 사람이 되기를 소원하자, 그 소원을 들은 요정들이 피노키오에게 생명을 불어넣어 주었죠."
+  `디즈니 영화 오프닝에서 배경 음악으로 사용되는 음악의 제목이 
+  피노키오의 주제곡인 ‘When you wish upon a star’라는 사실을 알고 있었나요? 
+  나무 인형 피노키오를 만든 제페토 할아버지가 밤하늘의 밝은 별을 보며 피노키오가 진짜 사람이 되기를 소원하자, 
+  그 소원을 들은 요정들이 피노키오에게 생명을 불어넣어 주었죠.`
 ];
 
 function delay(ms) {
@@ -103,9 +119,15 @@ function delay(ms) {
 function renderMainStars() {
   for (let s of stars) {
     const { r, g, b } = s.color;
+    const l = s.lum || 0;
     fill(r, g, b);
     noStroke();
     ellipse(s.x, s.y, 10, 10);
+    if (l > 0) {
+      fill(r, g, b, 70);
+      ellipse(s.x, s.y, l, l);
+    }
+    
   }
 }
 
@@ -156,7 +178,8 @@ function stars_loc() {
   
   return base.map(s => ({
     ...s,
-    color: { r: 255, g: 255, b: 255 }
+    color: { r: 255, g: 255, b: 255 },
+    lum : 0
   }));
 }
 
@@ -169,15 +192,7 @@ function setup() {
 }
 
 function draw() {
-  backgroundStar(80);
-
-  // if (mode === "question_2") {
-  //   question_2();
-  // } else if (mode === "loading_2") {
-  //   loading_2();
-  // } else if (mode === "question_3") {
-  //   question_3();  
-  // }
+  backgroundStar();
 
   switch (mode) {
     case "main":
@@ -225,20 +240,34 @@ function keyPressed() {
     input_1();
   } else if (keyCode === ENTER && mode === "question_2") {
     input_2();
-  }
+  } else if (keyCode === ENTER && mode === "question_3") {
+    input_3();
+  } 
 }
 
-function backgroundStar(){
+function backgroundStar() {
   background(0);
 
-  for (i = 0; i < 100; i++){
-    let x = random(width);
-    let y = random(height);
-    fill(random(200, 256));
-    noStroke();
-    ellipse(x, y, random(1, 3), random(1, 3));  
+  if (frameCount % 40 === 0) {
+    back_stars = [];
+
+    for (let i = 0; i < 100; i++) {
+      back_stars.push({
+        x: random(width),
+        y: random(height),
+        size: random(2, 5),
+        brightness: random(200, 255)
+      });
+    }
+  }
+  noStroke();
+  for (let s of back_stars) {
+    fill(s.brightness);
+    ellipse(s.x, s.y, s.size, s.size);
   }
 }
+
+// 메인
 
 function main_frame() {
   stroke(255);
@@ -249,6 +278,8 @@ function main_frame() {
   textSize(100);
   text('Wish.exe', width * 0.5, height * 0.5);
 }
+
+// 인트로
 
 function intro() {
   introFrame++;
@@ -386,6 +417,7 @@ function input_2(){
   getUserInput();
   mode = "loading_2";
   emotionResult = null;
+  factLoading = about_stars()
 }
 
 function loading_2(){
@@ -409,8 +441,7 @@ function loading_2(){
   textAlign(CENTER, CENTER);
   fill(255);
 
-  const fact = about_stars();
-  text(fact, width / 2, height * 0.8);
+  text(factLoading, width / 2, height * 0.8);
 
   if (targetColor !== null) {
     startStarColoring(emotionResult);
@@ -440,7 +471,14 @@ function colorNextStar() {
 
 function about_stars(){
   //별자리와 관련한 사실들을 리스트로 만들어 random추출하기
-  abouts = ["별자리 , 천문학 에서 특정 그룹 중 하나적어도 이름을 붙인 사람들이 상상했던 별들은\n 하늘에서 눈에 띄는 물체나 생물의 형태를 이룬다고 믿었습니다."]
+  abouts = ["별자리 , 천문학 에서 특정 그룹 중 하나적어도 이름을 붙인 사람들이 상상했던 별들은\n 하늘에서 눈에 띄는 물체나 생물의 형태를 이룬다고 믿었습니다.",
+    "별자리는 고대 바빌로니아인들이 유목 생활을 하며 밤하늘의 별에 모양을 붙이기 시작한 데서 유래했습니다.",
+    "자신의 생일날에 자신의 탄생 별자리를 볼 수가 없습니다. 생일에서 6개월 정도 전후에만 밤하늘에서 찾아볼 수 있습니다.",
+    "국제천문연맹은 1928년, 황도 12궁을 포함한 88개의 별자리를 공식적으로 확정지었습니다.",
+    "가장 큰 별자리는 밤하늘의 면적 중 3.16%를 차지하는 바다뱀 자리입니다.",
+    "가장 작은 별자리는 남쪽 하늘의 가장 인기 있는 별자리 중 하나인 남십자자리입니다.",
+    "밤하늘에서 가장 밝은 별은 큰개자리에 있는 시리우스입니다."
+  ]
   const fact = random(abouts);
   return fact;
   //fact 전달
@@ -450,37 +488,81 @@ function about_stars(){
 //질문 3
 
 function question_3(){
-  hasCalledLLM = false;
   renderMainStars()
-  //stars_col()의 정보 받아오기
-  //별의 밝기 지정하는 질문
-  input_3()
+  renderQuestionText("지나간 2025년의 하루로 돌아갈 수 있다면,\n그날의 자신에게 어떤 말을 해주고 싶나요?");
+  renderAnswerInput()
 }
 
 function input_3(){
-  //텍스트 입력받고
-  //LLM 실행
+  getUserInput();
+  emotionResult = null;
+  hasCalledLLM = false;  
+  mode = "loading_3";
 }
 
 function loading_3(){
-  stars_lum()
-  stars_myth()
+  renderMainStars()
+
+  if (!hasCalledLLM) {
+    hasCalledLLM = true;
+    callLLM(SYSTEM_PROMPT, userInput).then(async result => {
+      try {
+        emotionResult = JSON.parse(result).emotion;
+        collectedEmotions.push(emotionResult);
+        targetLum = emotionLums[emotionResult];
+      } catch (e) {
+        console.error("JSON parse error:", result);
+      }
+      isCallingLLM = false; 
+    });
+  }
+
+  textSize(24);
+  textAlign(CENTER, CENTER);
+  fill(255);
+
+  const fact = stars_myth();
+  text(fact, width / 2, height * 0.8);
+
+  if (targetLum !== null) {
+    stars_lum(emotionResult);
+  }
+
 }
 
-function stars_lum(){
-  //별 밝기 정하기
-  //stars_col의 정보받아오기
-  //밝기 입히기
+function stars_lum(emotionId) {
+  targetLum = emotionLums[emotionId];
+  starLumIndex = 0;
+
+  lumNextStar();
 }
+
+function lumNextStar() {
+  if (starLumIndex >= stars.length) {
+    mode = "question_4";
+    return;
+  }
+
+  stars[starLumIndex].lum = targetLum;
+  starLumIndex++;
+
+  setTimeout(lumNextStar, 1000);
+}
+
 
 function stars_myth(){
   //별자리와 관련한 신화들을 리스트로 만들어 random추출하기
-  myth_list = []
-  myth = abouts[random(0, len(abouts))]
-  //fact 전달
+  myth_list = [`<오리온에 관한 신화>
+    달의 여신 아르테미스를 사랑한 대가로 그녀의 화살에 맞아 죽음을 당한 사냥꾼 오리온의 별자리.
+    그러나 아르테미스가 그에게 화살을 쏜 것은 둘의 결혼을 반대한 오빠 아폴론의 계략 탓이었다.`]
+  const myth = random(myth_list);
+  return myth;
 }
 
+
 //질문 4(소원)
+
+
 function question_4(){
   //stars_lum의 정보받아오기
   input_4()
