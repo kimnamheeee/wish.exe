@@ -219,6 +219,12 @@ function draw() {
     case "question_3":
       question_3();
       break;
+    case "question_4":
+      question_4();
+      break;
+    case "drag_stars":
+      drag_stars();
+      break;
   }
 }
 
@@ -242,6 +248,8 @@ function keyPressed() {
     input_2();
   } else if (keyCode === ENTER && mode === "question_3") {
     input_3();
+  } else if (keyCode === ENTER && mode === "question_4") {
+    input_4();
   } 
 }
 
@@ -564,19 +572,20 @@ function stars_myth(){
 
 
 function question_4(){
-  //stars_lum의 정보받아오기
-  input_4()
+  renderMainStars()
+  renderQuestionText("2025년의 나날을 기억하며, 다가오는 2026년에 이루고 싶은 소망은 무엇인가요?");
+  renderAnswerInput()
 }
 
 function input_4(){
-  //텍스트 입력받고
-  //LLM 실행
+  getUserInput();
+  mode = "drag_stars";
+  hasCalledLLM = false; 
+  emotionResult = null;
 }
 
 function drag_stars(){
-  //소원에 따른 별자리 출력
-  //별 드래그앤 드랍
-  //페이드아웃
+  renderMainStars()
 }
 
 function last(){
