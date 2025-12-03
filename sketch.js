@@ -16,7 +16,10 @@ let targetLum = null;
 
 let factLoading = null;
 
-
+let stars = [];
+let draggedStarIndex = -1;
+let targetPositions = [];
+const SNAP_THRESHOLD = 60;
 
 
 const emotionColors = {
@@ -185,6 +188,11 @@ function stars_loc() {
   }));
 }
 
+
+
+
+
+
 let mode = "main";      // "main" 또는 "intro"
 let introFrame = 0;
 let textCount = 0;
@@ -233,6 +241,9 @@ function draw() {
       break;
     case "drag_stars":
       drag_stars();
+      break;
+    case "last":
+      last();
       break;
   }
 }
@@ -591,21 +602,114 @@ function input_4(){
   mode = "drag_stars";
   hasCalledLLM = false; 
   emotionResult = null;
+  targetPositions = createStarsTargets();
+}
+
+function createStarsTargets(){
+  return[
+    { x: width * 0.55, y: height * 0.30 },
+    { x: width * 0.60, y: height * 0.38 },
+    { x: width * 0.63, y: height * 0.46 },
+    { x: width * 0.66, y: height * 0.52 },
+    { x: width * 0.70, y: height * 0.58 },
+    { x: width * 0.74, y: height * 0.50 },
+    { x: width * 0.78, y: height * 0.42 },
+  ];
+}
+
+function mousePressed() {
+  if (mode === "drag_stars"){
+    for (let i = 0; i<stars.length; i++){
+      let s = stars[i];
+      let d = dist(mouseX, mouseY, s.x, s.y);
+      if (d < 25) {
+        draggedStarIndex = i;
+        break;
+      }
+    }
+  }
+}
+
+function mouseDragged(){
+  if (mode === "drag_stars" && draggedStarIndex !== -1) {
+    stars[draggedStarIndex].x = mouseX;
+    stars[draggedStarIndex].y = mouseY;
+  }
+}
+
+function mouseReleased(){
+  draggedStarIndex = -1;
+}
+
+function checkStarsComplete() {
+  if (!targetPositions || targetPositions.length === 0) return false;
+
+  const usedStars = new Set();  
+  let matched = 0;
+
+  for (let t of targetPositions) {
+    let found = false;
+
+    for (let i = 0; i < stars.length; i++) {
+      if (usedStars.has(i)) continue;   
+
+      const s = stars[i];
+      const d = dist(s.x, s.y, t.x, t.y);
+
+      if (d <= SNAP_THRESHOLD) {
+        usedStars.add(i);  
+        matched++;
+        found = true;
+        break;
+      }
+    }
+
+    if (!found) {
+      return false;
+    }
+  }
+
+  return matched === targetPositions.length;
 }
 
 
-
 function drag_stars(){
-  if (dragImage_1) {
-    image(dragImage_1, width * 0.5, height * 0.5);
-  } else {
-    fill(255);
-    textAlign(CENTER, CENTER);
-    textSize(24);
-    text("이미지를 불러오는 중입니다...", width / 2, height / 2);
-  }
+  // if (dragImage_1) {
+  //   image(dragImage_1, width * 0.5, height * 0.5);
+  // } else {
+  //   fill(255);
+  //   textAlign(CENTER, CENTER);
+  //   textSize(24);
+  //   text("이미지를 불러오는 중입니다...", width / 2, height / 2);
+  // }
   renderMainStars();
+  renderConstellationTargets();
 
+  renderDragInstruction();
+
+  if (checkStarsComplete()) {
+    mode = "last"
+  }
+}
+
+function renderDragInstruction() {
+  textSize(24);
+  textAlign(CENTER, CENTER);
+  fill(255);
+
+  text('별을 움직여 소원을 담은 별자리를 완성시켜주세요.', width / 2, height * 0.8);
+
+}
+
+function renderConstellationTargets() {
+  if (!targetPositions || targetPositions.length === 0) return;
+
+  noStroke();
+  fill(255, 255, 255, 180); // 약간 투명한 흰색 원
+
+  for (let t of targetPositions) {
+    ellipse(t.x, t.y, 20, 20);   // 지름 20 원
+  }
 }
 
 function last(){
@@ -614,6 +718,7 @@ function last(){
   radar_chart()
   reset()
   //일정시간 지나면 메인화면으로 전환
+  text('실행 확인.', width / 2, height * 0.8);
 }
 
 function radar_chart(){
