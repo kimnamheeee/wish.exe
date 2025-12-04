@@ -172,14 +172,19 @@ function renderAnswerInput() {
 
 function stars_loc() {
   const base = [
-    { x: width * 0.25, y: height * 0.30 },
-    { x: width * 0.32, y: height * 0.34 },
-    { x: width * 0.39, y: height * 0.38 },
-    { x: width * 0.45, y: height * 0.44 },
-    { x: width * 0.52, y: height * 0.48 },
-    { x: width * 0.58, y: height * 0.51 },
-    { x: width * 0.64, y: height * 0.56 }
+    { x: width * 0.18, y: height * 0.72 },
+    { x: width * 0.27, y: height * 0.48 },
+    { x: width * 0.33, y: height * 0.31 },
+    { x: width * 0.41, y: height * 0.57 },
+    { x: width * 0.46, y: height * 0.40 },
+    { x: width * 0.53, y: height * 0.66 },
+    { x: width * 0.60, y: height * 0.29 },
+    { x: width * 0.68, y: height * 0.51 },
+    { x: width * 0.74, y: height * 0.37 },
+    { x: width * 0.81, y: height * 0.60 },
+    { x: width * 0.56, y: height * 0.19 },
   ];
+  //각 별자리별로 필요한 별의 개수가 다르므로, 별자리 index와 별의 index를 통일해 각 별자리별로 별의 좌표를 입력해야 할 것 같습니다.
   
   return base.map(s => ({
     ...s,
@@ -188,11 +193,6 @@ function stars_loc() {
   }));
 }
 
-
-
-
-
-
 let mode = "main";      // "main" 또는 "intro"
 let introFrame = 0;
 let textCount = 0;
@@ -200,12 +200,12 @@ let textCount = 0;
 let dragImage_1;
 
 function preload() {
-  imageMode(CENTER)
   dragImage_1 = loadImage('images/dragImage_1.png');
 }
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
+  imageMode(CENTER);
 }
 
 function draw() {
@@ -602,19 +602,48 @@ function input_4(){
   mode = "drag_stars";
   hasCalledLLM = false; 
   emotionResult = null;
-  targetPositions = createStarsTargets();
+
+  const normTargets = createStarsTargets(drag_index);
+  targetPositions = normTargets.map(t => getTargetScreenPos(t));
 }
 
-function createStarsTargets(){
-  return[
-    { x: width * 0.55, y: height * 0.30 },
-    { x: width * 0.60, y: height * 0.38 },
-    { x: width * 0.63, y: height * 0.46 },
-    { x: width * 0.66, y: height * 0.52 },
-    { x: width * 0.70, y: height * 0.58 },
-    { x: width * 0.74, y: height * 0.50 },
-    { x: width * 0.78, y: height * 0.42 },
-  ];
+
+let drag_index = 0;
+// 질문1에서 생성되는 별자리 및 별 개수의 인덱스와 동일
+// 프로토타입용으로 현재 0으로 임의로 설정
+
+function createStarsTargets(drag_index){
+  const targets = [
+    [{ rx: 0.743, ry: 0.234 },
+  { rx: 0.664, ry: 0.175 },
+  { rx: 0.543, ry: 0.338 },
+  { rx: 0.548, ry: 0.460 },
+  { rx: 0.657, ry: 0.542 },
+  { rx: 0.697, ry: 0.668 },
+  { rx: 0.875, ry: 0.679 },
+  { rx: 0.914, ry: 0.592 },
+  { rx: 0.207, ry: 0.608 },
+  { rx: 0.256, ry: 0.773 },
+  { rx: 0.061, ry: 0.894 },]
+  ]
+
+  return targets[drag_index];
+}
+
+function getTargetScreenPos(target) {
+  let originalW = dragImage_1.width;
+  let originalH = dragImage_1.height;
+
+  let scaledW = width * 0.7;
+  let scaledH = originalH * (scaledW / originalW);
+
+  let cx = width / 2;
+  let cy = height / 2;
+
+  let x = cx - scaledW / 2 + scaledW * target.rx;
+  let y = cy - scaledH / 2 + scaledH * target.ry;
+
+  return { x, y };
 }
 
 function mousePressed() {
@@ -655,6 +684,10 @@ function checkStarsComplete() {
 
       const s = stars[i];
       const d = dist(s.x, s.y, t.x, t.y);
+      if (d < SNAP_THRESHOLD) {
+        s.x = t.x;
+        s.y = t.y;
+      }
 
       if (d <= SNAP_THRESHOLD) {
         usedStars.add(i);  
@@ -674,16 +707,25 @@ function checkStarsComplete() {
 
 
 function drag_stars(){
-  // if (dragImage_1) {
-  //   image(dragImage_1, width * 0.5, height * 0.5);
-  // } else {
-  //   fill(255);
-  //   textAlign(CENTER, CENTER);
-  //   textSize(24);
-  //   text("이미지를 불러오는 중입니다...", width / 2, height / 2);
-  // }
+  if (dragImage_1 && dragImage_1.width > 0) {
+    const originalW = dragImage_1.width;
+    const originalH = dragImage_1.height;
+
+    const scaledW = width * 0.7;
+    const scaledH = originalH * (scaledW / originalW);
+
+    const cx = width / 2;
+    const cy = height / 2;
+
+    image(dragImage_1, cx, cy, scaledW, scaledH);
+  } else {
+    fill(255);
+    textAlign(CENTER, CENTER);
+    textSize(24);
+    text("이미지를 불러오는 중입니다...", width / 2, height / 2);
+  }
   renderMainStars();
-  renderConstellationTargets();
+  renderStarsTargets();
 
   renderDragInstruction();
 
@@ -701,7 +743,7 @@ function renderDragInstruction() {
 
 }
 
-function renderConstellationTargets() {
+function renderStarsTargets() {
   if (!targetPositions || targetPositions.length === 0) return;
 
   noStroke();
