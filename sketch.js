@@ -1044,7 +1044,6 @@ function hardResetToMain() {
   back_stars = [];
   loadingProgress = 0;
   loadingStartTime = 0;
-  showRadarChart = false;
 
   hasUploadedCapture = false;
   qrcodeElement.style.opacity = 0;
