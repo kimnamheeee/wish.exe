@@ -248,9 +248,13 @@ let introFrame = 0;
 let textCount = 0;
 
 let dragImage_1;
+let titleImage;
+let titleDescription;
 
 function preload() {
   dragImage_1 = loadImage('images/dragImage_1.png');
+  titleImage = loadImage('images/title.png');
+  titleDescription = loadImage('images/title_description.png');
 }
 
 function setup() {
@@ -330,39 +334,94 @@ function keyPressed() {
   } 
 }
 
+let shootingStars = [];
+let NUM_STARS = 120;
+
+function initStars() {
+  back_stars = [];
+  for (let i = 0; i < NUM_STARS; i++) {
+    back_stars.push({
+      x: random(width),
+      y: random(height),
+      baseSize: random(1, 3),
+      sizeOffset: random(0, TWO_PI),
+      baseBrightness: random(150, 255),
+      brightOffset: random(0, TWO_PI),
+      twinkleSpeed: random(0.01, 0.03)
+    });
+  }
+}
+
+function spawnShootingStar() {
+  if (random() < 0.005) {  
+    shootingStars.push({
+      x: random(width),
+      y: random(height * 0.4),
+      vx: random(8, 12),
+      vy: random(3, 6),
+      size: random(2, 4),
+      life: 60
+    });
+  }
+}
+
+function updateShootingStars() {
+  for (let s of shootingStars) {
+    s.x += s.vx;
+    s.y += s.vy;
+    s.life -= 1;
+  }
+  shootingStars = shootingStars.filter(s => s.life > 0);
+}
+
+function drawShootingStars() {
+  for (let s of shootingStars) {
+    stroke(255, 255, 255, 200);
+    strokeWeight(s.size);
+    line(s.x, s.y, s.x - s.vx * 2, s.y - s.vy * 2);  
+  }
+  noStroke();
+}
+
 function backgroundStar() {
   background(0);
 
-  if (frameCount % 40 === 0) {
-    back_stars = [];
+  if (back_stars.length === 0) initStars();
 
-    for (let i = 0; i < 100; i++) {
-      back_stars.push({
-        x: random(width),
-        y: random(height),
-        size: random(2, 5),
-        brightness: random(200, 255)
-      });
-    }
-  }
   noStroke();
   for (let s of back_stars) {
-    fill(s.brightness);
-    ellipse(s.x, s.y, s.size, s.size);
+    const b = s.baseBrightness + sin(frameCount * s.twinkleSpeed + s.brightOffset) * 50;
+
+    const sz = s.baseSize + sin(frameCount * s.twinkleSpeed + s.sizeOffset) * 0.5;
+
+    fill(b);
+    ellipse(s.x, s.y, sz, sz);
   }
-  // renderSavedStars()
+
+  spawnShootingStar();
+  updateShootingStars();
+  drawShootingStars();
 }
 
 // 메인
 
+function drawImageAspect(img, x, y, maxW, maxH) {
+  let iw = img.width;
+  let ih = img.height;
+  
+  let ratio = min(maxW / iw, maxH / ih);
+  let newW = iw * ratio;
+  let newH = ih * ratio;
+
+  image(img, x, y, newW, newH);
+}
+
+
 function main_frame() {
   stroke(255);
   fill(255);
-  textAlign(CENTER, CENTER);
-  textSize(30);
-  text('> Press Enter To Start <', width * 0.5, height * 0.8);
-  textSize(100);
-  text('Wish.exe', width * 0.5, height * 0.5);
+  drawImageAspect(titleImage, width * 0.5, height * 0.45, width, height);
+  drawImageAspect(titleDescription, width * 0.5, height * 0.8, 400, height);
 }
 
 // 인트로
