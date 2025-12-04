@@ -24,6 +24,8 @@ let draggedStarIndex = -1;
 let targetPositions = [];
 const SNAP_THRESHOLD = 60;
 
+let isRadarAnimating = false;
+
 // //참가자들 별자리 저장
 // const MAX_USER_STARS = 5;
 // let userStars = [];
@@ -70,6 +72,22 @@ const emotionLums = {
 
 
 const collectedEmotions = [];
+
+const totalEmotions = {
+  0: 0,
+  1: 0,
+  2: 0,
+  3: 0,
+  4: 0,
+}
+
+const currentEmotions = {
+  0: 0,
+  1: 0,
+  2: 0,
+  3: 0,
+  4: 0,
+}
 
 const LLM_API_URL = "https://p5-llm-server.vercel.app/api/llm"
 const UPLOAD_API_URL = "https://p5-llm-server.vercel.app/api/upload";
@@ -243,6 +261,7 @@ function setup() {
     height: 128
   });
   qrcodeElement = document.getElementById("qrcode");
+  angleMode(DEGREES);
 }
 
 function draw() {
@@ -494,6 +513,7 @@ function loading_2(){
     callLLM(SYSTEM_PROMPT, userInput).then(async result => {
       try {
         emotionResult = JSON.parse(result).emotion;
+        totalEmotions[emotionResult]+=10;
         collectedEmotions.push(emotionResult);
         targetColor = emotionColors[emotionResult];
       } catch (e) {
@@ -575,6 +595,7 @@ function loading_3(){
       try {
         emotionResult = JSON.parse(result).emotion;
         collectedEmotions.push(emotionResult);
+        totalEmotions[emotionResult]+=10;
         targetLum = emotionLums[emotionResult];
       } catch (e) {
         console.error("JSON parse error:", result);
@@ -844,9 +865,33 @@ function last(){
   let base64 = cropped.canvas.toDataURL("image/png");
   uploadCapture(base64);
 
+  if (!isRadarAnimating) isRadarAnimating = true;
+  
+  if (isRadarAnimating) {
+    updateRadarValues();
+  }
+
   radar_chart()
   reset(); //일정시간 지나면 메인화면으로 전환
 }
+
+
+function updateRadarValues() {
+  for (let key in currentEmotions) {
+    currentEmotions[key] = lerp(
+      currentEmotions[key],
+      totalEmotions[key],
+      0.05
+    );
+
+    if (abs(currentEmotions[key] - totalEmotions[key]) < 0.1) {
+      currentEmotions[key] = totalEmotions[key];
+    }
+  }
+
+  if (Object.keys(currentEmotions).every(k => currentEmotions[k] === totalEmotions[k])) isRadarAnimating = false;
+}
+
 
 // function saveCurrentStar() {
 //   if (!stars || stars.length == 0) return;
@@ -906,6 +951,66 @@ function last(){
 
 function radar_chart(){
   //레이더 차트
+  stroke(200);
+  strokeWeight(1);
+  let x = width * 0.12;
+  let y = height * 0.8;
+
+  for (let i = 0; i < 6; i++) {
+    let r1 = 100;
+    let r2 = 20
+
+    let dx = r1 * cos(i * 72 - 90);
+    let dy = r1 * sin(i * 72 - 90);
+
+    line(x, y, x + dx, y + dy);
+
+    for (let j = 0; j < 5; j++) {
+
+      let dxax = r2 * cos(i * 72 - 90);
+      let dyax = r2 * sin(i * 72 - 90);
+
+      let nextdxax = r2 * cos((i + 1) * 72 - 90);
+      let nextdyax = r2 * sin((i + 1) * 72 - 90);
+
+      line(x + dxax, y + dyax, x + nextdxax, y + nextdyax);
+
+      r2 = r2 + 20;
+    }
+
+  }
+
+  let dx1 = currentEmotions[0] * cos(72 - 90);
+  let dy1 = currentEmotions[0] * sin(72 - 90);
+
+  let dx2 = currentEmotions[1] * cos(2 * 72 - 90);
+  let dy2 = currentEmotions[1] * sin(2 * 72 - 90);
+
+  let dx3 = currentEmotions[2] * cos(3 * 72 - 90);
+  let dy3 = currentEmotions[2] * sin(3 * 72 - 90);
+
+  let dx4 = currentEmotions[3] * cos(4 * 72 - 90);
+  let dy4 = currentEmotions[3] * sin(4 * 72 - 90);
+
+  let dx5 = currentEmotions[4] * cos(5 * 72 - 90);
+  let dy5 = currentEmotions[4] * sin(5 * 72 - 90);
+
+  noStroke();
+  fill('#FDBE02');
+  beginShape();
+  vertex(x + dx1, y + dy1);
+  vertex(x + dx2, y + dy2);
+  vertex(x + dx3, y + dy3);
+  vertex(x + dx4, y + dy4);
+  vertex(x + dx5, y + dy5);
+  vertex(x + dx1, y + dy1);
+  endShape();
+
+  text('Calm', x+100, y-30);
+  text('Sadness', x+50, y+100);
+  text('Hope', x-80, y+100);
+  text('Fear', x-130, y-30);
+  text('Happiness', x-15, y-107);
 }
 
 function reset(){
@@ -937,6 +1042,7 @@ function hardResetToMain() {
   back_stars = [];
   loadingProgress = 0;
   loadingStartTime = 0;
+  showRadarChart = false;
 
   hasUploadedCapture = false;
   qrcodeElement.style.opacity = 0;
