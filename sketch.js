@@ -15,6 +15,20 @@ let starLumIndex = 0;
 let targetLum = null;
 
 let factLoading = null;
+let transitioning = false;
+
+let stars = [];
+let draggedStarIndex = -1;
+let targetPositions = [];
+const SNAP_THRESHOLD = 60;
+
+// //참가자들 별자리 저장
+// const MAX_USER_STARS = 5;
+// let userStars = [];
+// let lastStarSaved = false;
+
+
+let resetScheduled = false;
 
 
 const emotionColors = {
@@ -167,14 +181,19 @@ function renderAnswerInput() {
 
 function stars_loc() {
   const base = [
-    { x: width * 0.25, y: height * 0.30 },
-    { x: width * 0.32, y: height * 0.34 },
-    { x: width * 0.39, y: height * 0.38 },
-    { x: width * 0.45, y: height * 0.44 },
-    { x: width * 0.52, y: height * 0.48 },
-    { x: width * 0.58, y: height * 0.51 },
-    { x: width * 0.64, y: height * 0.56 }
+    { x: width * 0.18, y: height * 0.72 },
+    { x: width * 0.27, y: height * 0.48 },
+    { x: width * 0.33, y: height * 0.31 },
+    { x: width * 0.41, y: height * 0.57 },
+    { x: width * 0.46, y: height * 0.40 },
+    { x: width * 0.53, y: height * 0.66 },
+    { x: width * 0.60, y: height * 0.29 },
+    { x: width * 0.68, y: height * 0.51 },
+    { x: width * 0.74, y: height * 0.37 },
+    { x: width * 0.81, y: height * 0.60 },
+    { x: width * 0.56, y: height * 0.19 },
   ];
+  //각 별자리별로 필요한 별의 개수가 다르므로, 별자리 index와 별의 index를 통일해 각 별자리별로 별의 좌표를 입력해야 할 것 같습니다.
   
   return base.map(s => ({
     ...s,
@@ -187,8 +206,15 @@ let mode = "main";      // "main" 또는 "intro"
 let introFrame = 0;
 let textCount = 0;
 
+let dragImage_1;
+
+function preload() {
+  dragImage_1 = loadImage('images/dragImage_1.png');
+}
+
 function setup() {
   createCanvas(windowWidth, windowHeight);
+  imageMode(CENTER);
 }
 
 function draw() {
@@ -224,6 +250,9 @@ function draw() {
       break;
     case "drag_stars":
       drag_stars();
+      break;
+    case "last":
+      last();
       break;
   }
 }
@@ -273,6 +302,7 @@ function backgroundStar() {
     fill(s.brightness);
     ellipse(s.x, s.y, s.size, s.size);
   }
+  // renderSavedStars()
 }
 
 // 메인
@@ -582,27 +612,307 @@ function input_4(){
   mode = "drag_stars";
   hasCalledLLM = false; 
   emotionResult = null;
+
+  const normTargets = createStarsTargets(drag_index);
+  targetPositions = normTargets.map(t => getTargetScreenPos(t));
+}
+
+
+let drag_index = 0;
+// 질문1에서 생성되는 별자리 및 별 개수의 인덱스와 동일
+// 프로토타입용으로 현재 0으로 임의로 설정
+
+function createStarsTargets(drag_index){
+  const targets = [
+    [{ rx: 0.743, ry: 0.234 },
+  { rx: 0.664, ry: 0.175 },
+  { rx: 0.543, ry: 0.338 },
+  { rx: 0.548, ry: 0.460 },
+  { rx: 0.657, ry: 0.542 },
+  { rx: 0.697, ry: 0.668 },
+  { rx: 0.875, ry: 0.679 },
+  { rx: 0.914, ry: 0.592 },
+  { rx: 0.207, ry: 0.608 },
+  { rx: 0.256, ry: 0.773 },
+  { rx: 0.061, ry: 0.894 },]
+  ]
+
+  return targets[drag_index];
+}
+
+function getTargetScreenPos(target) {
+  let originalW = dragImage_1.width;
+  let originalH = dragImage_1.height;
+
+  let scaledW = width * 0.7;
+  let scaledH = originalH * (scaledW / originalW);
+
+  let cx = width / 2;
+  let cy = height / 2;
+
+  let x = cx - scaledW / 2 + scaledW * target.rx;
+  let y = cy - scaledH / 2 + scaledH * target.ry;
+
+  return { x, y };
+}
+
+function mousePressed() {
+  if (mode === "drag_stars"){
+    for (let i = 0; i<stars.length; i++){
+      let s = stars[i];
+      let d = dist(mouseX, mouseY, s.x, s.y);
+      if (d < 25) {
+        draggedStarIndex = i;
+        break;
+      }
+    }
+  } else if (mode === "last") {
+    const btnX = width - width * 0.15;
+    const btnY = 100;
+    const btnW = width * 0.1;
+    const btnH = height * 0.1;
+
+    if (mouseX > btnX && mouseX < btnX + btnW &&
+        mouseY > btnY && mouseY < btnY + btnH) {
+      hardResetToMain();
+    }
+  }
+}
+
+function mouseDragged(){
+  if (mode === "drag_stars" && draggedStarIndex !== -1) {
+    stars[draggedStarIndex].x = mouseX;
+    stars[draggedStarIndex].y = mouseY;
+  }
+}
+
+function mouseReleased(){
+  draggedStarIndex = -1;
+}
+
+function checkStarsComplete() {
+  if (!targetPositions || targetPositions.length === 0) return false;
+
+  const usedStars = new Set();  
+  let matched = 0;
+
+  for (let t of targetPositions) {
+    let found = false;
+
+    for (let i = 0; i < stars.length; i++) {
+      if (usedStars.has(i)) continue;   
+
+      const s = stars[i];
+      const d = dist(s.x, s.y, t.x, t.y);
+      if (d < SNAP_THRESHOLD) {
+        s.x = t.x;
+        s.y = t.y;
+      }
+
+      if (d <= SNAP_THRESHOLD) {
+        usedStars.add(i);  
+        matched++;
+        found = true;
+        break;
+      }
+    }
+
+    if (!found) {
+      return false;
+    }
+  }
+
+  return matched === targetPositions.length;
+}
+
+function draw_dragImage() {
+  if (dragImage_1 && dragImage_1.width > 0) {
+    const originalW = dragImage_1.width;
+    const originalH = dragImage_1.height;
+
+    const scaledW = width * 0.7;
+    const scaledH = originalH * (scaledW / originalW);
+
+    const cx = width / 2;
+    const cy = height / 2;
+
+    image(dragImage_1, cx, cy, scaledW, scaledH);
+  } else {
+    fill(255);
+    textAlign(CENTER, CENTER);
+    textSize(24);
+    text("이미지를 불러오는 중입니다...", width / 2, height / 2);
+  }
 }
 
 function drag_stars(){
-  renderMainStars()
+  draw_dragImage();
+  renderMainStars();
+  renderStarsTargets();
+  renderDragInstruction();
+
+  if (checkStarsComplete() && !transitioning)  {
+    transitioning = true;
+    goToLastMode();
+  }
+}
+
+async function goToLastMode() {
+  await delay(3000); // 3초 기다림
+  mode = "last";
+}
+
+function renderDragInstruction() {
+  textSize(24);
+  textAlign(CENTER, CENTER);
+  fill(255);
+
+  text('별을 움직여 소원을 담은 별자리를 완성시켜주세요.', width / 2, height * 0.8);
+
+}
+
+function renderStarsTargets() {
+  if (!targetPositions || targetPositions.length === 0) return;
+
+//   noStroke();
+//   fill(255, 255, 255, 180); // 약간 투명한 흰색 원
+
+//   for (let t of targetPositions) {
+//     ellipse(t.x, t.y, 20, 20);   // 지름 20 원
+//   }
 }
 
 function last(){
   //최종화면
-  //QR 이미지
+  backgroundStar();
+  draw_dragImage();
+  renderMainStars();
+  // renderStarsLines(stars);
+
+  // if (!lastStarSaved){
+  //   saveCurrentStar();
+  //   lastStarSaved = true;
+  // }
+  
   radar_chart()
-  reset()
-  //일정시간 지나면 메인화면으로 전환
+  reset(); //일정시간 지나면 메인화면으로 전환
 }
+
+// function saveCurrentStar() {
+//   if (!stars || stars.length == 0) return;
+
+//   const user = stars.map(s => ({
+//     x: s.x,
+//     y: s.y,
+//     color: { ...s.color },
+//     lum: s.lum
+//   }));
+
+//   userStars.push(user);
+
+//   if (userStars.length > MAX_USER_STARS) {
+//     userStars.shift();
+//   }
+// }
+
+// function renderStarsLines(starsArray) {
+//   if (!starsArray || starsArray.length < 2) return;
+
+//   noFill();
+//   stroke(255, 255, 255, 180);
+//   strokeWeight(2);
+
+//   beginShape();
+//   for (let s of starsArray) {
+//     vertex(s.x, s.y);
+//   }
+//   endShape();
+// }
+
+// function renderSavedStars() {
+//   if (!userStars || userStars.length === 0) return;
+
+//   for (let user of userStars){
+//     if (!user || user.length < 2) continue;
+
+//     noFill();
+//     stroke(255, 255, 255, 40);   
+//     strokeWeight(1);
+//     beginShape();
+//     for (let p of user) {
+//       vertex(p.x, p.y);
+//     }
+//     endShape();
+
+//     // 점
+//     noStroke();
+//     for (let p of user) {
+//       fill(255, 255, 255, 70);
+//       ellipse(p.x, p.y, 4, 4);
+//     }
+//   }
+// }
+
 
 function radar_chart(){
   //레이더 차트
 }
 
 function reset(){
-  //초기화버튼
+  
+
+
+  fill(255);
+  const btnX = width - width * 0.15;
+  const btnY = 100;
+  const btnW = width * 0.1;
+  const btnH = height * 0.1;
+
+  rect(btnX, btnY, btnW, btnH, 10);
+
+  fill(0);
+  textAlign(CENTER, CENTER);
+  textSize(18);
+  text('처음으로', btnX + btnW / 2, btnY + btnH / 2);
+  text('15초 후 자동으로 처음 화면으로 돌아갑니다.', btnX + btnW / 2, (btnY + btnH / 2) * 0.5);
+  if (!resetScheduled) {
+    resetScheduled = true;
+    setTimeout(() => {
+      hardResetToMain();
+    }, 15000);
+  }
 }
 
+
+function hardResetToMain() {
+  userInput = "";
+  back_stars = [];
+  loadingProgress = 0;
+  loadingStartTime = 0;
+
+  isCallingLLM = false;
+  emotionResult = null;
+  hasCalledLLM = false;
+
+  starColorIndex = 0;
+  targetColor = null;
+
+  starLumIndex = 0;
+  targetLum = null;
+
+  factLoading = null;
+
+  stars = [];
+  draggedStarIndex = -1;
+  targetPositions = [];
+
+  collectedEmotions.length = 0;
+
+  transitioning = false;
+  resetScheduled = false;
+  // lastStarSaved = false;
+
+  mode = "main";
+}
 
 

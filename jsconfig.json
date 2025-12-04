@@ -1,10 +1,13 @@
 {
   "compilerOptions": {
-    "target": "es6"
+    // "target": "es6"
+    "lib": ["ES6"], 
+    "noEmit": true
   },
   "include": [
     "*.js",
     "**/*.js",
     "/Users/knh/.vscode/extensions/samplavigne.p5-vscode-1.2.16/p5types/global.d.ts"
-  ]
+  ],
+  "exclude": ["node_modules"]
 }
