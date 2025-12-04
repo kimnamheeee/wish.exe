@@ -8,6 +8,8 @@ let isCallingLLM = false;
 let emotionResult = null;
 let hasCalledLLM = false;
 
+let hasUploadedCapture = false;
+
 let starColorIndex = 0;
 let targetColor = null;
 
@@ -27,9 +29,28 @@ const SNAP_THRESHOLD = 60;
 // let userStars = [];
 // let lastStarSaved = false;
 
-
+let qrcode;
+let qrcodeElement;
 let resetScheduled = false;
 
+function uploadCapture(base64) {
+  if (!base64 || hasUploadedCapture) return;
+  hasUploadedCapture = true;
+
+  fetch(UPLOAD_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ image: base64 })
+  })
+  .then(res => res.json())
+  .then(data => {
+    console.log("업로드된 이미지 URL:", data.url);
+    qrcode.makeCode(data.url);
+    qrcodeElement.style.opacity = 1;
+  });
+}
 
 const emotionColors = {
   0: { r:180, g:200, b:255 },
@@ -51,6 +72,7 @@ const emotionLums = {
 const collectedEmotions = [];
 
 const LLM_API_URL = "https://p5-llm-server.vercel.app/api/llm"
+const UPLOAD_API_URL = "https://p5-llm-server.vercel.app/api/upload";
 
 const SYSTEM_PROMPT = `
 You are an emotion classifier for an art installation.
@@ -215,6 +237,12 @@ function preload() {
 function setup() {
   createCanvas(windowWidth, windowHeight);
   imageMode(CENTER);
+  qrcode = new QRCode(document.getElementById("qrcode"), {
+    text: "",
+    width: 128,
+    height: 128
+  });
+  qrcodeElement = document.getElementById("qrcode");
 }
 
 function draw() {
@@ -745,6 +773,16 @@ function draw_dragImage() {
   }
 }
 
+function getDragImageXBounds() {
+  const scaledW = width * 0.7;
+  const cx = width / 2;
+  
+  const startX = Math.floor(cx - scaledW / 2);  // 시작 x좌표
+  const endX = Math.floor(cx + scaledW / 2);    // 끝 x좌표
+  
+  return { startX, endX, centerX: cx, width: scaledW };
+}
+
 function drag_stars(){
   draw_dragImage();
   renderMainStars();
@@ -787,13 +825,25 @@ function last(){
   backgroundStar();
   draw_dragImage();
   renderMainStars();
+
   // renderStarsLines(stars);
 
   // if (!lastStarSaved){
   //   saveCurrentStar();
   //   lastStarSaved = true;
   // }
-  
+
+  // userInput을 text로 표시
+
+  textSize(24);
+  textAlign(CENTER, CENTER);
+  fill(255);
+  text(userInput, width / 2, height * 0.8);
+
+  let cropped = get(getDragImageXBounds().startX, 0, getDragImageXBounds().width, windowHeight);
+  let base64 = cropped.canvas.toDataURL("image/png");
+  uploadCapture(base64);
+
   radar_chart()
   reset(); //일정시간 지나면 메인화면으로 전환
 }
@@ -859,8 +909,6 @@ function radar_chart(){
 }
 
 function reset(){
-  
-
 
   fill(255);
   const btnX = width - width * 0.15;
@@ -889,6 +937,9 @@ function hardResetToMain() {
   back_stars = [];
   loadingProgress = 0;
   loadingStartTime = 0;
+
+  hasUploadedCapture = false;
+  qrcodeElement.style.opacity = 0;
 
   isCallingLLM = false;
   emotionResult = null;

@@ -6,3 +6,10 @@ html, body {
 canvas {
   display: block;
 }
+
+#qrcode {
+  position: fixed;
+  bottom: 10px;
+  right: 10px;
+  opacity: 0;
+}
