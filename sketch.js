@@ -27,6 +27,8 @@ const SNAP_THRESHOLD = 60;
 let isRadarAnimating = false;
 let timer;
 
+let font;
+
 // //참가자들 별자리 저장
 // const MAX_USER_STARS = 5;
 // let userStars = [];
@@ -255,6 +257,7 @@ function preload() {
   dragImage_1 = loadImage('images/dragImage_1.png');
   titleImage = loadImage('images/title.png');
   titleDescription = loadImage('images/title_description.png');
+  font = loadFont('fonts/pokemon.ttf');
 }
 
 function setup() {
@@ -267,6 +270,7 @@ function setup() {
   });
   qrcodeElement = document.getElementById("qrcode");
   angleMode(DEGREES);
+  textFont(font);
 }
 
 function draw() {
@@ -375,11 +379,13 @@ function updateShootingStars() {
 }
 
 function drawShootingStars() {
+  push();
   for (let s of shootingStars) {
     stroke(255, 255, 255, 200);
     strokeWeight(s.size);
     line(s.x, s.y, s.x - s.vx * 2, s.y - s.vy * 2);  
   }
+  pop();
   noStroke();
 }
 
@@ -446,11 +452,11 @@ function intro_text() {
   fill(255);
   textAlign(CENTER, CENTER);
 
-  textSize(15);
+  textSize(24);
   text("-> Next (Press Enter)", width * 0.8, height * 0.9);
 
   // 본문 텍스트
-  textSize(24);
+  textSize(32);
 
   if (textCount === 0) {
     text(
@@ -610,7 +616,7 @@ function colorNextStar() {
   stars[starColorIndex].color = { ...targetColor };
   starColorIndex++;
 
-  setTimeout(colorNextStar, 1000);
+  setTimeout(colorNextStar, 500);
 }
 
 
@@ -693,7 +699,7 @@ function lumNextStar() {
   stars[starLumIndex].lum = targetLum;
   starLumIndex++;
 
-  setTimeout(lumNextStar, 1000);
+  setTimeout(lumNextStar, 500);
 }
 
 
