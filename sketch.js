@@ -10,6 +10,8 @@ let hasCalledLLM = false;
 
 let hasUploadedCapture = false;
 
+let targetBase = null;
+
 let starColorIndex = 0;
 let targetColor = null;
 
@@ -173,17 +175,12 @@ function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function renderMainStars() {
-  for (let s of stars) {
-    const { r, g, b } = s.color;
-    const l = s.lum || 0;
-    fill(r, g, b);
-    noStroke();
-    ellipse(s.x, s.y, 10, 10);
-    if (l > 0) {
-      fill(r, g, b, 70);
-      ellipse(s.x, s.y, l, l);
-    }
+function renderMainStars(baseImage) {
+  if (!baseImage) return;
+
+  for (let i = 0; i < stars.length; i++) {
+    let s = stars[i];
+    drawImageAspect(baseImage, s.x, s.y, 20, 20);
   }
 }
 
@@ -221,26 +218,44 @@ function renderAnswerInput() {
 }
 
 function stars_loc() {
-  const base = [
-    { x: width * 0.18, y: height * 0.72 },
-    { x: width * 0.27, y: height * 0.48 },
-    { x: width * 0.33, y: height * 0.31 },
-    { x: width * 0.41, y: height * 0.57 },
-    { x: width * 0.46, y: height * 0.4 },
-    { x: width * 0.53, y: height * 0.66 },
-    { x: width * 0.6, y: height * 0.29 },
-    { x: width * 0.68, y: height * 0.51 },
-    { x: width * 0.74, y: height * 0.37 },
-    { x: width * 0.81, y: height * 0.6 },
-    { x: width * 0.56, y: height * 0.19 },
-  ];
-  //각 별자리별로 필요한 별의 개수가 다르므로, 별자리 index와 별의 index를 통일해 각 별자리별로 별의 좌표를 입력해야 할 것 같습니다.
+  const STAR_COUNT = 7;
 
-  return base.map((s) => ({
-    ...s,
-    color: { r: 255, g: 255, b: 255 },
-    lum: 0,
-  }));
+  const minY = height * 0.1;
+  const maxY = height * 0.55;
+
+  const stars = [];
+  const MIN_DIST = 35;
+
+  for (let i = 0; i < STAR_COUNT; i++) {
+    let x, y;
+    let safe = false;
+    let attempts = 0;
+
+    while (!safe && attempts < 200) {
+      attempts++;
+
+      x = random(width * 0.15, width * 0.85);
+      y = random(minY, maxY);
+
+      safe = true;
+      for (let s of stars) {
+        let d = dist(x, y, s.x, s.y);
+        if (d < MIN_DIST) {
+          safe = false;
+          break;
+        }
+      }
+    }
+
+    stars.push({
+      x,
+      y,
+      color: { r: 255, g: 255, b: 255 },
+      lum: 0,
+    });
+  }
+
+  return stars;
 }
 
 let mode = "main"; // "main" 또는 "intro"
@@ -272,6 +287,7 @@ function setup() {
   qrcodeElement = document.getElementById("qrcode");
   angleMode(DEGREES);
   textFont(font);
+  stars = stars_loc();
 }
 
 function draw() {
@@ -512,52 +528,33 @@ function input_1() {
   getUserInput();
   mode = "loading_1";
   loadingStartTime = millis();
-  stars = [];
   loadingProgress = 0;
 }
 
 function loading_1() {
-  let elapsed = millis() - loadingStartTime;
-
-  fill(255);
-  textSize(24);
-  textAlign(CENTER, CENTER);
-  text("생각을 정리하는 중...", width / 2, height / 2 - 200);
-
-  fill(255, 210);
-  rect(40, height - 180, width - 80, 140, 20);
-
-  fill(40);
-  textAlign(LEFT, TOP);
-  textSize(18);
-  text(factTexts[0], 60, height - 160, width - 120);
-
-  if (elapsed < loadingDuration) {
-    let dots = floor((elapsed / 300) % 4);
-    text("⋆".repeat(dots), width / 2, height / 2 - 160);
-    return;
+  if (!hasCalledLLM) {
+    hasCalledLLM = true;
+    callLLM(SYSTEM_PROMPT, userInput).then(async (result) => {
+      try {
+        emotionResult = JSON.parse(result).emotion;
+        collectedEmotions.push(emotionResult);
+        totalEmotions[emotionResult] += 10;
+        targetBase = baseStarImages[emotionResult];
+      } catch (e) {
+        console.error("JSON parse error:", result);
+      }
+      isCallingLLM = false;
+    });
   }
-
-  if (stars.length === 0) {
-    stars = stars_loc();
+  if (targetBase !== null) {
+    mode = "question_2";
   }
-
-  loadingProgress += 0.01;
-  if (loadingProgress > 1) loadingProgress = 1;
-
-  for (let i = 0; i < stars.length * loadingProgress; i++) {
-    let s = stars[i];
-    fill(255);
-    ellipse(s.x, s.y, 10, 10);
-  }
-
-  if (loadingProgress >= 1) mode = "question_2";
 }
 
 //질문 2
 
 function question_2() {
-  renderMainStars();
+  renderMainStars(targetBase);
   renderQuestionText(
     "2025년에 가장 많이 했던 생각은 무엇인가요?\n2025년에 가장 자주 했던 말은 무엇인가요?"
   );
