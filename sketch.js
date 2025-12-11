@@ -200,12 +200,46 @@ function loadingUI() {
   text(dotString, width / 2, height * 0.38);
 }
 
+let revealedStars = 0;
+let isRevealing = false;
+
+function startStarReveal() {
+  revealedStars = 0;
+  isRevealing = true;
+
+  revealNextStar();
+}
+
+function popEase(p) {
+  return p < 0.3 ? map(p, 0, 0.3, 0, 1.4) : map(p, 0.3, 1, 1.4, 1);
+}
+
+function revealNextStar() {
+  if (revealedStars >= stars.length) {
+    isRevealing = false;
+    return;
+  }
+
+  stars[revealedStars].appearProgress = 0;
+  revealedStars++;
+
+  setTimeout(revealNextStar, 1000);
+}
+
 function renderMainStars(baseImage) {
   if (!baseImage) return;
 
-  for (let i = 0; i < stars.length; i++) {
+  for (let i = 0; i < revealedStars; i++) {
     let s = stars[i];
-    drawImageAspect(baseImage, s.x, s.y, 20, 20);
+
+    if (s.appearProgress < 1) {
+      s.appearProgress += 0.08;
+      if (s.appearProgress > 1) s.appearProgress = 1;
+    }
+
+    let scale = popEase(s.appearProgress);
+
+    drawImageAspect(baseImage, s.x, s.y, 20 * scale, 20 * scale);
   }
 }
 
@@ -281,6 +315,7 @@ function stars_loc() {
       y,
       color: { r: 255, g: 255, b: 255 },
       lum: 0,
+      appearProgress: 1,
     });
   }
 
@@ -334,6 +369,9 @@ function draw() {
     case "loading_1":
       loading_1();
       break;
+    case "description_1":
+      description_1();
+      break;
     case "question_1":
       question_1();
       break;
@@ -358,6 +396,22 @@ function draw() {
     case "last":
       last();
       break;
+  }
+}
+
+function description_1() {
+  textSize(24);
+  textAlign(CENTER, CENTER);
+  fill(255);
+  text(
+    `감정에 따라 탄생하는 별의 모양이 달라져요.\n2025년 가장 많은 노력을 들인 일은 [감정]과 연결되어 있네요.\n
+    당신의 [감정]을 [별]각별에 담아볼게요.`,
+    width / 2,
+    height * 0.8
+  );
+  renderMainStars(targetBase);
+  if (revealedStars >= stars.length) {
+    mode = "question_2";
   }
 }
 
@@ -587,7 +641,8 @@ function loading_1() {
     });
   }
   if (targetBase !== null) {
-    mode = "question_2";
+    mode = "description_1";
+    startStarReveal();
   }
 
   renderLoadingText(`디즈니 영화 오프닝에서 배경 음악으로 사용되는 음악의 제목이 
@@ -614,7 +669,7 @@ function input_2() {
 }
 
 function loading_2() {
-  renderMainStars();
+  renderMainStars(targetBase);
 
   if (!hasCalledLLM) {
     hasCalledLLM = true;
