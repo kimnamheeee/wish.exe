@@ -32,10 +32,11 @@ let timer;
 
 let font;
 
-// //참가자들 별자리 저장
-// const MAX_USER_STARS = 5; //saveCurrentStar, renderSavedStars
-// let userStars = [];
-// let lastStarSaved = false;
+//참가자들 별자리 저장
+let captureLayer;
+const MAX_USER_STARS = 5; //saveCurrentStar, renderSavedStars
+let userStars = [];
+let lastStarSaved = false;
 
 let qrcode;
 let qrcodeElement;
@@ -273,6 +274,10 @@ function preload() {
 function setup() {
   createCanvas(windowWidth, windowHeight);
   imageMode(CENTER);
+
+  captureLayer = createGraphics(windowWidth, windowHeight);
+  captureLayer.imageMode(CENTER);
+  
   qrcode = new QRCode(document.getElementById("qrcode"), {
     text: "",
     width: 128,
@@ -417,6 +422,12 @@ function backgroundStar() {
   spawnShootingStar();
   updateShootingStars();
   drawShootingStars();
+
+  // if (mode === "main"){
+  //   console.log("renderSavedStars: length =", userStars.length);
+  //   renderSavedStars();
+  // }
+
 }
 
 // 메인
@@ -436,8 +447,12 @@ function drawImageAspect(img, x, y, maxW, maxH) {
 function main_frame() {
   stroke(255);
   fill(255);
+  
+  renderSavedStars();
+
   drawImageAspect(titleImage, width * 0.5, height * 0.45, width, height);
   drawImageAspect(titleDescription, width * 0.5, height * 0.8, 400, height);
+  
 }
 
 // 인트로
@@ -717,7 +732,7 @@ function stars_myth(){
   myth_list = [
     `- 오리온자리에 관한 신화 -
     오리온자리는 달의 여신 아르테미스를 사랑한 대가로 그녀의 화살에 맞아 죽음을 당한 사냥꾼 오리온의 별자리입니다.
-    안타까운 것은, 아르테미스가 그에게 화살을 쏜 이유는 둘의 결혼을 반대한 오빠 아폴론의 계략때문이라는 것입니다.`,
+    안타까운 것은, 아르테미스가 그에게 화살을 쏜 이유는 둘의 결혼을 반대한 오빠 아폴론의 계략 때문이라는 것입니다.`,
     `- 백조자리에 관한 신화 -
     백조자리는 한여름 밤, 머리 위로 높이 지나가는 십자가 모양이 별자리입니다.
     이러한 백조자리는 제우스가 백조로 변신한 모습이라는 사실, 아셨나요?
@@ -732,12 +747,12 @@ function stars_myth(){
     미소년 가니메데는 독수리로 변한 제우스에게 납치 당해 술을 따르는 일을 하게 되었습니다.`,
     `- 거문고자리에 관한 신화 -
     오르페우스는 자신의 아름다운 아내, 에우리디케를 살리기 위해 지하세계의 왕 하데스와 페르세포네 앞에서 거문고를 연주합니다.
-    이에 감동받은 페르세포네가 에우리디케를 데려가도 좋다고 허락하며, 땅위에 이를 때까지 뒤를 돌아보지 말라고 주의를 줍니다.
+    이에 감동받은 페르세포네가 에우리디케를 데려가도 좋다고 허락하면서, 땅 위에 이를 때까지 뒤를 돌아보지 말라고 경고합니다.
     그러나 오르페우스가 땅위에 다다를 무렵, 에우리디케가 뒤따라오는지 걱정이 되어 뒤를 돌아보았고, 
-    그 순간 에우리디케는 다시는 돌아올 수 없는 어둠 속으로 사라졌고, 그 후 오르페우스는 실의에 빠져 결국 죽고 말았습니다.
+    그 순간 에우리디케는 다시는 돌아올 수 없는 어둠 속으로 사라지게 되었습니다. 그 후 오르페우스는 실의에 빠져 결국 죽고 맙니다.
     주인을 잃은 거문고에서는 슬프고 아름다운 음악이 계속 흘러나왔고, 제우스는 이 음악에 매료되어 거문고를 하늘로 올려 영원히 그의 음악을 기억하게 하였습니다.`,
     `- 물고기자리에 관한 신화 -
-    두 물고기는 미의 여신 아프로디테와 아들 에로스가 변신한 것입니다. 
+    물고기자리의 두 물고기는 미의 여신 아프로디테와 아들 에로스가 변신한 것입니다. 
     아프로디테와 에로스가 강의 정취를 즐기고 있을 때 괴물 티폰이 나타났고, 깜짝 놀란 두 신은 물고기로 변신하여 강물에 뛰어들었습니다.
     그 두 신의 모습이 하늘의 물고기자리가 되었답니다.`
   ]
@@ -996,15 +1011,6 @@ function last(){
   draw_dragImage();
   renderMainStars();
 
-  // renderStarsLines(stars);
-
-  // if (!lastStarSaved){
-  //   saveCurrentStar();
-  //   lastStarSaved = true;
-  // }
-
-  // userInput을 text로 표시
-
   textSize(24);
   textAlign(CENTER, CENTER);
   fill(255);
@@ -1013,6 +1019,11 @@ function last(){
   let cropped = get(getDragImageXBounds().startX, 0, getDragImageXBounds().width, windowHeight);
   let base64 = cropped.canvas.toDataURL("image/png");
   uploadCapture(base64);
+
+  if (!lastStarSaved){
+    saveCurrentStar();
+    lastStarSaved = true;
+  }
 
   if (!isRadarAnimating) isRadarAnimating = true;
   
@@ -1044,61 +1055,85 @@ function updateRadarValues() {
   if (Object.keys(currentEmotions).every(k => currentEmotions[k] === totalEmotions[k])) isRadarAnimating = false;
 }
 
+function drawForCapture(layer) {
+  layer.clear();
 
-// function saveCurrentStar() {
-//   if (!stars || stars.length == 0) return;
+  if (dragImage_1 && dragImage_1.width > 0) {
+    const originalW = dragImage_1.width;
+    const originalH = dragImage_1.height;
 
-//   const user = stars.map(s => ({
-//     x: s.x,
-//     y: s.y,
-//     color: { ...s.color },
-//     lum: s.lum
-//   }));
+    const scaledW = width * 0.7;
+    const scaledH = originalH * (scaledW / originalW);
 
-//   userStars.push(user);
+    const cx = width / 2;
+    const cy = height / 2;
 
-//   if (userStars.length > MAX_USER_STARS) {
-//     userStars.shift();
-//   }
-// }
+    layer.image(dragImage_1, cx, cy, scaledW, scaledH);
+  }
 
-// function renderStarsLines(starsArray) {
-//   if (!starsArray || starsArray.length < 2) return;
+  for (let s of stars) {
+      const { r, g, b } = s.color;
+      const l = s.lum || 0;
+      layer.noStroke();
+      layer.fill(r, g, b);
+      layer.ellipse(s.x, s.y, 10, 10);
 
-//   noFill();
-//   stroke(255, 255, 255, 180);
-//   strokeWeight(2);
+      if (l > 0) {
+        layer.fill(r, g, b, 70);
+        layer.ellipse(s.x, s.y, l, l);
+      }
+  }
+}
 
-//   beginShape();
-//   for (let s of starsArray) {
-//     vertex(s.x, s.y);
-//   }
-//   endShape();
-// }
+function captureStarImage() {
+  drawForCapture(captureLayer);
 
-// function renderSavedStars() {
-//   if (!userStars || userStars.length === 0) return;
+  const bounds = getDragImageXBounds();
+  const cropimage = captureLayer.get(
+    bounds.startX,
+    0,
+    bounds.width,
+    windowHeight
+  );
+  
 
-//   for (let user of userStars){
-//     if (!user || user.length < 2) continue;
+  return cropimage;
+}
 
-//     noFill();
-//     stroke(255, 255, 255, 40);   
-//     strokeWeight(1);
-//     beginShape();
-//     for (let p of user) {
-//       vertex(p.x, p.y);
-//     }
-//     endShape();
+function saveCurrentStar() {
+  const userImg = captureStarImage();
+  userStars.push(userImg);
+  
+  if (userStars.length > MAX_USER_STARS) {
+    userStars.shift();  // 가장 오래된 것 제거
+  }
+}
 
-//     // 점
-//     noStroke();
-//     for (let p of user) {
-//       fill(255, 255, 255, 70);
-//       ellipse(p.x, p.y, 4, 4);
-//     }
-//   }
-// }
+
+function renderSavedStars(){
+  if (!userStars || userStars.length === 0) return;
+
+  for (let i = 0; i < userStars.length; i++) {
+    const backImg = userStars[i];
+    if (!backImg) continue;
+    const backX = width * (0.05 + (i+1)*0.15);
+
+    const distFromCenter = Math.abs(i - 2);
+    let yValues = {
+      0: 0.25,
+      1: 0.75,
+      2: 0.5
+    };
+    const backY = height * yValues[distFromCenter];
+
+    push();
+    tint(255, 100);
+    const drawW = backImg.width * 0.4;
+    const drawH = backImg.height * 0.4;
+    image(backImg, backX, backY, drawW, drawH);
+    pop();
+  }
+}
 
 
 function radar_chart(){
@@ -1220,7 +1255,7 @@ function hardResetToMain() {
 
   transitioning = false;
   resetScheduled = false;
-  // lastStarSaved = false;
+  lastStarSaved = false;
 
   lastEnteredAt = 0;
 
