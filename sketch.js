@@ -30,7 +30,7 @@ let stars = []; //starsLoc
 
 let draggedStarIndex = -1;
 let targetPositions = [];
-const SNAP_THRESHOLD = 20;
+const SNAP_THRESHOLD = 30;
 
 let intensityResult = null;
 let isRadarAnimating = false;
@@ -1013,6 +1013,7 @@ function input_4() {
   for (let s of stars) {
     s.locked = false;
     s.lockedTargetIndex = null;
+    s.dragged = false;
   }
 }
 
@@ -1093,38 +1094,6 @@ function mousePressed() {
   }
 }
 
-function snapIfStarClose() {
-  if (draggedStarIndex === -1) return;
-  if (!targetPositions || targetPositions.length === 0) return;
-
-  const s = stars[draggedStarIndex];
-
-  for (let i = 0; i < targetPositions.length; i++) {
-    const t = targetPositions[i];
-
-    if (t.occupied && s.lockedTargetIndex !== i) continue;
-
-    const d = dist(s.x, s.y, t.x, t.y);
-    if (d <= SNAP_THRESHOLD) {
-      if (
-        typeof s.lockedTargetIndex === "number" &&
-        s.lockedTargetIndex !== i
-      ) {
-        const old = targetPositions[s.lockedTargetIndex];
-        if (old) old.occupied = false;
-      }
-
-      s.x = t.x;
-      s.y = t.y;
-      s.locked = true;
-      s.lockedTargetIndex = i;
-      t.occupied = true;
-
-      draggedStarIndex = -1;
-      break;
-    }
-  }
-}
 
 function snapIfStarClose() {
   if (draggedStarIndex === -1) return;
@@ -1138,14 +1107,14 @@ function snapIfStarClose() {
     if (t.occupied && s.lockedTargetIndex !== i) continue;
 
     const d = dist(s.x, s.y, t.x, t.y);
-    if (d <= SNAP_THRESHOLD) {
-      if (
-        typeof s.lockedTargetIndex === "number" &&
-        s.lockedTargetIndex !== i
-      ) {
-        const old = targetPositions[s.lockedTargetIndex];
-        if (old) old.occupied = false;
-      }
+    if (s.dragged && d <= SNAP_THRESHOLD) {
+      // if (
+      //   typeof s.lockedTargetIndex === "number" &&
+      //   s.lockedTargetIndex !== i
+      // ) {
+      //   const old = targetPositions[s.lockedTargetIndex];
+      //   if (old) old.occupied = false;
+      // }
 
       s.x = t.x;
       s.y = t.y;
@@ -1158,10 +1127,12 @@ function snapIfStarClose() {
     }
   }
 }
+
 
 function mouseDragged() {
   if (mode === "drag_stars" && draggedStarIndex !== -1) {
     const s = stars[draggedStarIndex];
+    s.dragged = true;
     if (!s.locked) {
       s.x = mouseX;
       s.y = mouseY;
@@ -1375,7 +1346,7 @@ function saveCurrentStar() {
   userStars.push(userImg);
 
   if (userStars.length > MAX_USER_STARS) {
-    userStars.shift(); // 가장 오래된 것 제거
+    userStars.shift()
   }
 }
 
