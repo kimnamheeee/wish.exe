@@ -98,6 +98,22 @@ const currentEmotions = {
   4: 0,
 };
 
+const emotionMapping = {
+  0: "차분함",
+  1: "슬픔",
+  2: "희망",
+  3: "걱정",
+  4: "행복",
+};
+
+const shapeMapping = {
+  0: "원형의",
+  1: "사각형의",
+  2: "육각형의",
+  3: "팔각형의",
+  4: "오각형의",
+};
+
 const LLM_API_URL = "https://p5-llm-server.vercel.app/api/llm";
 const UPLOAD_API_URL = "https://p5-llm-server.vercel.app/api/upload";
 
@@ -400,14 +416,9 @@ function draw() {
 }
 
 function description_1() {
-  textSize(24);
-  textAlign(CENTER, CENTER);
-  fill(255);
-  text(
-    `감정에 따라 탄생하는 별의 모양이 달라져요.\n2025년 가장 많은 노력을 들인 일은 [감정]과 연결되어 있네요.\n
-    당신의 [감정]을 [별]각별에 담아볼게요.`,
-    width / 2,
-    height * 0.8
+  renderLoadingText(
+    `감정에 따라 탄생하는 별의 모양이 달라져요.\n2025년 가장 많은 노력을 들인 일은[${emotionMapping[emotionResult]}]과 연결되어 있네요.
+    당신의 [${emotionMapping[emotionResult]}]을 [${shapeMapping[emotionResult]}] 별에 담아볼게요.`
   );
   renderMainStars(targetBase);
   if (revealedStars >= stars.length) {
