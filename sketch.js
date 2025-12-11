@@ -312,7 +312,7 @@ function revealNextStar() {
   triggerPop(stars[revealedStars]);
   revealedStars++;
 
-  setTimeout(revealNextStar, 1000);
+  setTimeout(revealNextStar, 500);
 }
 
 function renderMainStars(flag = false) {
@@ -842,7 +842,7 @@ function colorNextStar() {
   triggerPop(stars[starColorIndex]);
   starColorIndex++;
 
-  setTimeout(colorNextStar, 1000);
+  setTimeout(colorNextStar, 500);
 }
 
 function about_stars() {
@@ -924,7 +924,7 @@ function lumNextStar() {
   triggerPop(stars[starLumIndex]);
   starLumIndex++;
 
-  setTimeout(lumNextStar, 1000);
+  setTimeout(lumNextStar, 500);
 }
 
 function stars_myth() {
@@ -1345,6 +1345,7 @@ function hardResetToMain() {
   clearTimeout(timer);
   userInput = "";
   back_stars = [];
+
   loadingProgress = 0;
   loadingStartTime = 0;
 
@@ -1352,8 +1353,11 @@ function hardResetToMain() {
   qrcodeElement.style.opacity = 0;
 
   isCallingLLM = false;
-  emotionResult = null;
   hasCalledLLM = false;
+
+  emotionResult = null;
+  intensityResult = null;
+  emotionResults.fill(null);
 
   starColorIndex = 0;
   targetColor = null;
@@ -1364,6 +1368,9 @@ function hardResetToMain() {
   factLoading = null;
 
   stars = stars_loc();
+  revealedStars = 0;
+  isRevealing = false;
+
   draggedStarIndex = -1;
   targetPositions = [];
 
@@ -1371,9 +1378,9 @@ function hardResetToMain() {
 
   transitioning = false;
   resetScheduled = false;
-  // lastStarSaved = false;
-
   hasStartedStarColoring = false;
+
+  targetBase = null;
 
   mode = "main";
 }
