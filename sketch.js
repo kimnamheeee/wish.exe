@@ -6,6 +6,9 @@ let loadingDuration = 5000;
 
 let isCallingLLM = false;
 let emotionResult = null;
+
+const emotionResults = new Array(5).fill(null);
+
 let hasCalledLLM = false;
 
 let hasUploadedCapture = false;
@@ -219,6 +222,15 @@ function loadingUI() {
 let revealedStars = 0;
 let isRevealing = false;
 
+let popQueue = [];
+
+let hasStartedStarColoring = false;
+
+function triggerPop(star) {
+  star.popProgress = 0;
+  popQueue.push(star);
+}
+
 function startStarReveal() {
   revealedStars = 0;
   isRevealing = true;
@@ -231,31 +243,26 @@ function popEase(p) {
 }
 
 function revealNextStar() {
-  if (revealedStars >= stars.length) {
-    isRevealing = false;
-    return;
-  }
+  if (revealedStars >= stars.length) return;
 
-  stars[revealedStars].appearProgress = 0;
+  triggerPop(stars[revealedStars]);
   revealedStars++;
 
   setTimeout(revealNextStar, 1000);
 }
 
-function renderMainStars(baseImage) {
-  if (!baseImage) return;
-
+function renderMainStars() {
   for (let i = 0; i < revealedStars; i++) {
     let s = stars[i];
 
-    if (s.appearProgress < 1) {
-      s.appearProgress += 0.08;
-      if (s.appearProgress > 1) s.appearProgress = 1;
+    if (s.popProgress < 1) {
+      s.popProgress += 0.08;
+      if (s.popProgress > 1) s.popProgress = 1;
     }
 
-    let scale = popEase(s.appearProgress);
+    let scale = popEase(s.popProgress);
 
-    drawImageAspect(baseImage, s.x, s.y, 20 * scale, 20 * scale);
+    drawImageAspect(s.image, s.x, s.y, 20 * scale, 20 * scale);
   }
 }
 
@@ -331,7 +338,8 @@ function stars_loc() {
       y,
       color: { r: 255, g: 255, b: 255 },
       lum: 0,
-      appearProgress: 1,
+      popProgress: 1,
+      image: null,
     });
   }
 
@@ -346,6 +354,8 @@ let dragImage_1;
 let titleImage;
 let titleDescription;
 
+const coloredStarImages = Array.from({ length: 5 }, () => Array(5).fill(null));
+
 function preload() {
   dragImage_1 = loadImage("images/dragImage_1.png");
   dialogImage = loadImage("images/dialog.png");
@@ -355,6 +365,11 @@ function preload() {
   font = loadFont("fonts/pokemon.ttf");
   for (let i = 0; i < 5; i++) {
     baseStarImages[i] = loadImage(`images/stars/${i}/star.png`);
+  }
+  for (let i = 0; i < 5; i++) {
+    for (let j = 0; j < 5; j++) {
+      coloredStarImages[i][j] = loadImage(`images/stars/${i}/${j}/star.png`);
+    }
   }
 }
 
@@ -642,17 +657,21 @@ function loading_1() {
     callLLM(SYSTEM_PROMPT, userInput).then(async (result) => {
       try {
         emotionResult = JSON.parse(result).emotion;
+        emotionResults[0] = emotionResult;
         collectedEmotions.push(emotionResult);
         totalEmotions[emotionResult] += 10;
-        targetBase = baseStarImages[emotionResult];
+        stars.forEach((s) => {
+          s.image = baseStarImages[emotionResult];
+        });
       } catch (e) {
         console.error("JSON parse error:", result);
       }
       isCallingLLM = false;
     });
   }
-  if (targetBase !== null) {
+  if (emotionResults[0] !== null) {
     mode = "description_1";
+    hasCalledLLM = false;
     startStarReveal();
   }
 
@@ -687,9 +706,10 @@ function loading_2() {
     callLLM(SYSTEM_PROMPT, userInput).then(async (result) => {
       try {
         emotionResult = JSON.parse(result).emotion;
+        emotionResults[1] = emotionResult;
+        console.log(emotionResults);
         totalEmotions[emotionResult] += 10;
         collectedEmotions.push(emotionResult);
-        targetColor = emotionColors[emotionResult];
       } catch (e) {
         console.error("JSON parse error:", result);
       }
@@ -697,16 +717,16 @@ function loading_2() {
     });
   }
 
-  loadingUI();
   renderLoadingText(factLoading);
 
-  if (targetColor !== null) {
-    startStarColoring(emotionResult);
+  // 감정 분석이 끝난 뒤, 색칠 애니메이션은 한 번만 시작되도록 처리
+  if (emotionResults[1] !== null && !hasStartedStarColoring) {
+    hasStartedStarColoring = true;
+    startStarColoring();
   }
 }
 
-function startStarColoring(emotionId) {
-  targetColor = emotionColors[emotionId];
+function startStarColoring() {
   starColorIndex = 0;
 
   colorNextStar();
@@ -718,10 +738,12 @@ function colorNextStar() {
     return;
   }
 
-  stars[starColorIndex].color = { ...targetColor };
+  let img = coloredStarImages[emotionResults[0]][emotionResults[1]];
+  stars[starColorIndex].image = img;
+  triggerPop(stars[starColorIndex]);
   starColorIndex++;
 
-  setTimeout(colorNextStar, 500);
+  setTimeout(colorNextStar, 1000);
 }
 
 function about_stars() {
@@ -1250,6 +1272,8 @@ function hardResetToMain() {
   transitioning = false;
   resetScheduled = false;
   // lastStarSaved = false;
+
+  hasStartedStarColoring = false;
 
   mode = "main";
 }
