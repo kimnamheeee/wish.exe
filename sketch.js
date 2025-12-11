@@ -1340,16 +1340,19 @@ function drawForCapture(layer) {
   }
 
   for (let s of stars) {
-    const { r, g, b } = s.color;
-    const l = s.lum || 0;
-    layer.noStroke();
-    layer.fill(r, g, b);
-    layer.ellipse(s.x, s.y, 10, 10);
+    if (!s.image) continue;
 
-    if (l > 0) {
-      layer.fill(r, g, b, 70);
-      layer.ellipse(s.x, s.y, l, l);
-    }
+    const iw = s.image.width;
+    const ih = s.image.height;
+    if (iw <= 0 || ih <= 0) continue;
+
+    const maxW = 30 * 1.3;
+    const maxH = 30 * 1.3;
+    const ratio = Math.min(maxW / iw, maxH / ih);
+    const w = iw * ratio;
+    const h = ih * ratio;
+
+    layer.image(s.image, s.x, s.y, w, h);
   }
 }
 
