@@ -479,6 +479,14 @@ function main_frame() {
   drawImageAspect(titleDescription, width * 0.5, height * 0.8, 400, height);
 }
 
+function renderLoadingText(textString) {
+  image(dialogImage, width / 2, height * 0.82, 1000, 350);
+  textAlign(CENTER, CENTER);
+  fill(0);
+  textSize(24);
+  text(textString, width / 2, height * 0.8);
+}
+
 // 인트로
 
 function intro() {
@@ -582,17 +590,10 @@ function loading_1() {
     mode = "question_2";
   }
 
-  textAlign(CENTER, CENTER);
-  fill(255);
-  textSize(24);
-  text(
-    `디즈니 영화 오프닝에서 배경 음악으로 사용되는 음악의 제목이 
-  피노키오의 주제곡인 ‘When you wish upon a star’라는 사실을 알고 있었나요? 
-  나무 인형 피노키오를 만든 제페토 할아버지가 밤하늘의 밝은 별을 보며 피노키오가 진짜 사람이 되기를 소원하자, 
-  그 소원을 들은 요정들이 피노키오에게 생명을 불어넣어 주었죠.`,
-    width / 2,
-    height * 0.8
-  );
+  renderLoadingText(`디즈니 영화 오프닝에서 배경 음악으로 사용되는 음악의 제목이 
+    피노키오의 주제곡인 ‘When you wish upon a star’라는 사실을 알고 있었나요? 
+    나무 인형 피노키오를 만든 제페토 할아버지가 밤하늘의 밝은 별을 보며 피노키오가 진짜 사람이 되기를 소원하자, 
+    그 소원을 들은 요정들이 피노키오에게 생명을 불어넣어 주었죠.`);
 }
 
 //질문 2
@@ -630,11 +631,8 @@ function loading_2() {
     });
   }
 
-  textSize(24);
-  textAlign(CENTER, CENTER);
-  fill(255);
-
-  text(factLoading, width / 2, height * 0.8);
+  loadingUI();
+  renderLoadingText(factLoading);
 
   if (targetColor !== null) {
     startStarColoring(emotionResult);
