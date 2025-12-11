@@ -1,5 +1,6 @@
 let userInput = "";
 let back_stars = [];
+
 let loadingProgress = 0;
 let loadingStartTime = 0;
 let loadingDuration = 5000;
@@ -10,19 +11,21 @@ let hasCalledLLM = false;
 
 let hasUploadedCapture = false;
 
-let starColorIndex = 0;
+let starColorIndex = 0; //startStarColoring
 let targetColor = null;
 
-let starLumIndex = 0;
+let starLumIndex = 0; //stars_lum
 let targetLum = null;
 
 let factLoading = null;
+let mythLoading = null;
 let transitioning = false;
 
-let stars = [];
+let stars = []; //starsLoc
+
 let draggedStarIndex = -1;
 let targetPositions = [];
-const SNAP_THRESHOLD = 60;
+const SNAP_THRESHOLD = 20; 
 
 let isRadarAnimating = false;
 let timer;
@@ -30,7 +33,7 @@ let timer;
 let font;
 
 // //참가자들 별자리 저장
-// const MAX_USER_STARS = 5;
+// const MAX_USER_STARS = 5; //saveCurrentStar, renderSavedStars
 // let userStars = [];
 // let lastStarSaved = false;
 
@@ -57,7 +60,7 @@ function uploadCapture(base64) {
   });
 }
 
-const emotionColors = {
+const emotionColors = { 
   0: { r:180, g:200, b:255 },
   1: { r:90,  g:90,  b:160 },
   2: { r:255, g:230, b:100 },
@@ -65,7 +68,7 @@ const emotionColors = {
   4: { r:255, g:200, b:30  },
 };
 
-const emotionLums = {
+const emotionLums = { //이후 이미지로 대체
   0: 13,
   1: 16,
   2: 19,
@@ -162,12 +165,13 @@ async function callLLM(systemPrompt, userText) {
   return reply;
 }
 
+
 let factTexts = [
-  `디즈니 영화 오프닝에서 배경 음악으로 사용되는 음악의 제목이 
-  피노키오의 주제곡인 ‘When you wish upon a star’라는 사실을 알고 있었나요? 
+  `디즈니 영화 오프닝에서 배경 음악으로 사용되는 음악의 제목이 피노키오의 주제곡인 ‘When you wish upon a star’라는 사실을 알고 있었나요? 
   나무 인형 피노키오를 만든 제페토 할아버지가 밤하늘의 밝은 별을 보며 피노키오가 진짜 사람이 되기를 소원하자, 
   그 소원을 들은 요정들이 피노키오에게 생명을 불어넣어 주었죠.`
 ];
+
 
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -222,7 +226,7 @@ function renderAnswerInput() {
 }
 
 
-function stars_loc() {
+function starsLoc() {
   const base = [
     { x: width * 0.18, y: height * 0.72 },
     { x: width * 0.27, y: height * 0.48 },
@@ -241,7 +245,9 @@ function stars_loc() {
   return base.map(s => ({
     ...s,
     color: { r: 255, g: 255, b: 255 },
-    lum : 0
+    lum : 0,
+    locked : false,
+    lockedTargetIndex : null,
   }));
 }
 
@@ -250,11 +256,15 @@ let introFrame = 0;
 let textCount = 0;
 
 let dragImage_1;
+//let drageImage_n;
 let titleImage;
 let titleDescription;
 
 function preload() {
   dragImage_1 = loadImage('images/dragImage_1.png');
+  // for (i=1; i<n; i++){
+  //   `dragImage_${i}` = loadimage();
+  // }
   titleImage = loadImage('images/title.png');
   titleDescription = loadImage('images/title_description.png');
   font = loadFont('fonts/pokemon.ttf');
@@ -275,7 +285,7 @@ function setup() {
 
 function draw() {
   backgroundStar();
-
+  
   switch (mode) {
     case "main":
       main_frame();
@@ -453,7 +463,7 @@ function intro_text() {
   textAlign(CENTER, CENTER);
 
   textSize(24);
-  text("-> Next (Press Enter)", width * 0.8, height * 0.9);
+  text("--> Next (Press Enter)", width * 0.8, height * 0.9);
 
   // 본문 텍스트
   textSize(32);
@@ -540,7 +550,7 @@ function loading_1() {
   }
 
   if (stars.length === 0) {
-    stars = stars_loc();
+    stars = starsLoc();
   }
 
   loadingProgress += 0.01;
@@ -622,18 +632,17 @@ function colorNextStar() {
 
 
 function about_stars(){
-  //별자리와 관련한 사실들을 리스트로 만들어 random추출하기
-  abouts = ["별자리 , 천문학 에서 특정 그룹 중 하나적어도 이름을 붙인 사람들이 상상했던 별들은\n 하늘에서 눈에 띄는 물체나 생물의 형태를 이룬다고 믿었습니다.",
+  abouts = [
+    "별자리, 천문학 에서 적어도 특정 그룹 중 하나 이름을 붙인 사람들이 상상했던 별들은\n 하늘에서 눈에 띄는 물체나 생물의 형태를 이룬다고 믿었습니다.",
     "별자리는 고대 바빌로니아인들이 유목 생활을 하며 밤하늘의 별에 모양을 붙이기 시작한 데서 유래했습니다.",
-    "자신의 생일날에 자신의 탄생 별자리를 볼 수가 없습니다. 생일에서 6개월 정도 전후에만 밤하늘에서 찾아볼 수 있습니다.",
+    "자신의 생일날에 자신의 탄생 별자리를 볼 수가 없다는 것을 아셨나요?.\n 자신의 탄생 별자리는 생일에서 6개월 정도 전후에만 밤하늘에서 찾아볼 수 있습니다.",
     "국제천문연맹은 1928년, 황도 12궁을 포함한 88개의 별자리를 공식적으로 확정지었습니다.",
     "가장 큰 별자리는 밤하늘의 면적 중 3.16%를 차지하는 바다뱀 자리입니다.",
     "가장 작은 별자리는 남쪽 하늘의 가장 인기 있는 별자리 중 하나인 남십자자리입니다.",
     "밤하늘에서 가장 밝은 별은 큰개자리에 있는 시리우스입니다."
   ]
-  const fact = random(abouts);
+  const fact = "- 별자리와 관련한 사실 -\n" + random(abouts);
   return fact;
-  //fact 전달
 }
 
 
@@ -650,6 +659,7 @@ function input_3(){
   emotionResult = null;
   hasCalledLLM = false;  
   mode = "loading_3";
+  mythLoading = stars_myth()
 }
 
 function loading_3(){
@@ -674,8 +684,7 @@ function loading_3(){
   textAlign(CENTER, CENTER);
   fill(255);
 
-  const fact = stars_myth();
-  text(fact, width / 2, height * 0.8);
+  text(mythLoading, width / 2, height * 0.8);
 
   if (targetLum !== null) {
     stars_lum(emotionResult);
@@ -705,9 +714,33 @@ function lumNextStar() {
 
 function stars_myth(){
   //별자리와 관련한 신화들을 리스트로 만들어 random추출하기
-  myth_list = [`<오리온에 관한 신화>
-    달의 여신 아르테미스를 사랑한 대가로 그녀의 화살에 맞아 죽음을 당한 사냥꾼 오리온의 별자리.
-    그러나 아르테미스가 그에게 화살을 쏜 것은 둘의 결혼을 반대한 오빠 아폴론의 계략 탓이었다.`]
+  myth_list = [
+    `- 오리온자리에 관한 신화 -
+    오리온자리는 달의 여신 아르테미스를 사랑한 대가로 그녀의 화살에 맞아 죽음을 당한 사냥꾼 오리온의 별자리입니다.
+    안타까운 것은, 아르테미스가 그에게 화살을 쏜 이유는 둘의 결혼을 반대한 오빠 아폴론의 계략때문이라는 것입니다.`,
+    `- 백조자리에 관한 신화 -
+    백조자리는 한여름 밤, 머리 위로 높이 지나가는 십자가 모양이 별자리입니다.
+    이러한 백조자리는 제우스가 백조로 변신한 모습이라는 사실, 아셨나요?
+    제우스는 스파르타의 왕 틴다레오스의 아내, 레다가 백조를 사랑한다는 정보를 듣고 백조로 탈바꿈하여 그녀와 사랑을 나눕니다.
+    그때 제우스의 모습이 백조자리가 되었답니다.`,
+    `- 전갈자리에 관한 신화 - 
+    사냥꾼인 오리온의 자만심 가득한 말에 화가 난 헤라가 오리온을 죽이려고 전갈을 풀어놓았습니다.
+    이 전갈은 비록 오리온을 죽이지는 못했지만, 오리온을 죽였다는 공로로 하늘의 별자리가 되었습니다.
+    그렇기에 동쪽하늘에서 전갈자리가 떠오를 때면 오리온자리는 서쪽하늘로 달아나 져버립니다.`,
+    `- 물병자리에 관한 신화 -
+    물병자리는 독수리에게 납치당해 신들에게 술을 따르는 일을 하게 된 트로이의 왕자, 가니메데입니다.
+    미소년 가니메데는 독수리로 변한 제우스에게 납치 당해 술을 따르는 일을 하게 되었습니다.`,
+    `- 거문고자리에 관한 신화 -
+    오르페우스는 자신의 아름다운 아내, 에우리디케를 살리기 위해 지하세계의 왕 하데스와 페르세포네 앞에서 거문고를 연주합니다.
+    이에 감동받은 페르세포네가 에우리디케를 데려가도 좋다고 허락하며, 땅위에 이를 때까지 뒤를 돌아보지 말라고 주의를 줍니다.
+    그러나 오르페우스가 땅위에 다다를 무렵, 에우리디케가 뒤따라오는지 걱정이 되어 뒤를 돌아보았고, 
+    그 순간 에우리디케는 다시는 돌아올 수 없는 어둠 속으로 사라졌고, 그 후 오르페우스는 실의에 빠져 결국 죽고 말았습니다.
+    주인을 잃은 거문고에서는 슬프고 아름다운 음악이 계속 흘러나왔고, 제우스는 이 음악에 매료되어 거문고를 하늘로 올려 영원히 그의 음악을 기억하게 하였습니다.`,
+    `- 물고기자리에 관한 신화 -
+    두 물고기는 미의 여신 아프로디테와 아들 에로스가 변신한 것입니다. 
+    아프로디테와 에로스가 강의 정취를 즐기고 있을 때 괴물 티폰이 나타났고, 깜짝 놀란 두 신은 물고기로 변신하여 강물에 뛰어들었습니다.
+    그 두 신의 모습이 하늘의 물고기자리가 되었답니다.`
+  ]
   const myth = random(myth_list);
   return myth;
 }
@@ -729,9 +762,18 @@ function input_4(){
   emotionResult = null;
 
   const normTargets = createStarsTargets(drag_index);
-  targetPositions = normTargets.map(t => getTargetScreenPos(t));
+  targetPositions = normTargets.map(t => {
+    const pos = getTargetScreenPos(t);
+    return{
+      ...pos,
+      occupied: false
+    };
+  });
+  for (let s of stars) {
+    s.locked = false;
+    s.lockedTargetIndex = null;
+  }
 }
-
 
 let drag_index = 0;
 // 질문1에서 생성되는 별자리 및 별 개수의 인덱스와 동일
@@ -775,9 +817,19 @@ function mousePressed() {
   if (mode === "drag_stars"){
     for (let i = 0; i<stars.length; i++){
       let s = stars[i];
+
       let d = dist(mouseX, mouseY, s.x, s.y);
-      if (d < 25) {
+      if (d < 20) {
         draggedStarIndex = i;
+        
+        if (s.locked) {
+          s.locked = false;
+          if (typeof s.lockedTargetIndex === "number"){
+            const t = targetPositions[s.lockedTargetIndex];
+            if (t) t.occupied = false;
+          }
+          s.lockedTargetIndex = null;
+        }
         break;
       }
     }
@@ -794,10 +846,44 @@ function mousePressed() {
   }
 }
 
+function snapIfStarClose() {
+  if (draggedStarIndex === -1) return;
+  if (!targetPositions || targetPositions.length === 0) return;
+
+  const s = stars[draggedStarIndex];
+
+  for (let i = 0; i < targetPositions.length; i++){
+    const t = targetPositions[i];
+
+    if (t.occupied && s.lockedTargetIndex !== i) continue;
+
+    const d = dist(s.x, s.y, t.x, t.y);
+    if (d <= SNAP_THRESHOLD) {
+      if (typeof s.lockedTargetIndex === "number" && s.lockedTargetIndex !== i){
+        const old = targetPositions[s.lockedTargetIndex];
+        if (old) old.occupied = false;
+      }
+
+      s.x = t.x;
+      s.y = t.y;
+      s.locked = true;
+      s.lockedTargetIndex = i;
+      t.occupied = true;
+      
+      draggedStarIndex = -1;
+      break;
+    }
+  }
+}
+
 function mouseDragged(){
   if (mode === "drag_stars" && draggedStarIndex !== -1) {
-    stars[draggedStarIndex].x = mouseX;
-    stars[draggedStarIndex].y = mouseY;
+    const s = stars[draggedStarIndex];
+    if (!s.locked) {
+      s.x = mouseX;
+      s.y = mouseY;
+      snapIfStarClose();
+    }
   }
 }
 
@@ -808,38 +894,31 @@ function mouseReleased(){
 function checkStarsComplete() {
   if (!targetPositions || targetPositions.length === 0) return false;
 
-  const usedStars = new Set();  
-  let matched = 0;
+  // const usedStars = new Set();  
+  // let matched = 0;
 
   for (let t of targetPositions) {
     let found = false;
 
-    for (let i = 0; i < stars.length; i++) {
-      if (usedStars.has(i)) continue;   
+    for (let s of stars) {
+      if(!s.locked) continue;
 
-      const s = stars[i];
       const d = dist(s.x, s.y, t.x, t.y);
       if (d < SNAP_THRESHOLD) {
-        s.x = t.x;
-        s.y = t.y;
-      }
-
-      if (d <= SNAP_THRESHOLD) {
-        usedStars.add(i);  
-        matched++;
         found = true;
         break;
       }
-    }
 
+    }
+    
     if (!found) {
-      return false;
+        return false;
     }
+
   }
-
-  return matched === targetPositions.length;
+  
+  return true;
 }
-
 function draw_dragImage() {
   if (dragImage_1 && dragImage_1.width > 0) {
     const originalW = dragImage_1.width;
@@ -882,9 +961,13 @@ function drag_stars(){
   }
 }
 
+
+let lastEnteredAt = 0; //last 모드 진입 시각
+
 async function goToLastMode() {
   await delay(3000); // 3초 기다림
   mode = "last";
+  lastEnteredAt = millis();
 }
 
 function renderDragInstruction() {
@@ -938,7 +1021,10 @@ function last(){
   }
 
   radar_chart()
-  reset(); //일정시간 지나면 메인화면으로 전환
+
+  if (millis() - lastEnteredAt > 1000){
+    reset();
+  }
 }
 
 
@@ -1093,12 +1179,13 @@ function reset(){
   textAlign(CENTER, CENTER);
   textSize(18);
   text('처음으로', btnX + btnW / 2, btnY + btnH / 2);
-  text('15초 후 자동으로 처음 화면으로 돌아갑니다.', btnX + btnW / 2, (btnY + btnH / 2) * 0.5);
+  fill(255);
+  text('30초 후 자동으로 처음 화면으로 돌아갑니다.', btnX + btnW / 2, (btnY + btnH / 2) + 50);
   if (!resetScheduled) {
     resetScheduled = true;
     timer = setTimeout(() => {
       hardResetToMain();
-    }, 15000);
+    }, 30000);
   }
 }
 
@@ -1135,7 +1222,7 @@ function hardResetToMain() {
   resetScheduled = false;
   // lastStarSaved = false;
 
+  lastEnteredAt = 0;
+
   mode = "main";
 }
-
-
