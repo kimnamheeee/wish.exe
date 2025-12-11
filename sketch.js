@@ -687,11 +687,44 @@ function main_frame() {
 }
 
 function renderLoadingText(textString) {
-  image(dialogImage, width / 2, height * 0.82, 1000, 350);
-  textAlign(CENTER, CENTER);
+  if (!dialogImage) return;
+
+  const textStr = String(textString ?? "");
+  const lines = textStr.split("\n");
+
+  const paddingX = 64;
+  const paddingY = 16;
+
+  const fontSize = 24;
+  textSize(fontSize);
+  textAlign(LEFT, TOP);
+
+  let maxLineWidth = 0;
+  for (let line of lines) {
+    const w = textWidth(line);
+    if (w > maxLineWidth) maxLineWidth = w;
+  }
+
+  const bubbleWidth = maxLineWidth + paddingX * 2;
+
+  const lineHeight = fontSize + 8;
+  const textHeight = lines.length * lineHeight;
+
+  const bubbleHeight = textHeight + paddingY * 2;
+
+  const cx = width / 2;
+  const cy = height * 0.8;
+
+  image(dialogImage, cx, cy, bubbleWidth, bubbleHeight + 350);
+
   fill(0);
-  textSize(24);
-  text(textString, width / 2, height * 0.8);
+  textAlign(CENTER);
+
+  const startY = cy - bubbleHeight / 2;
+
+  for (let i = 0; i < lines.length; i++) {
+    text(lines[i], cx, startY + i * lineHeight);
+  }
 }
 
 // 인트로
