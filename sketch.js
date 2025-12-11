@@ -509,7 +509,7 @@ function intro_text() {
     text(
       "누구나 한 번쯤은 밤하늘을 올려다보며\n간절한 소원을 빌어본 순간이 있을 겁니다.",
       width * 0.5,
-      height * 0.7
+      height * 0.5
     );
   } else if (textCount === 1) {
     text(
@@ -518,21 +518,21 @@ function intro_text() {
         "사람들은 오래 전부터 드넓게 펼쳐진 밤하늘이\n" +
         "신들의 영역과 관련된 통로라고 생각해왔습니다.",
       width * 0.5,
-      height * 0.6
+      height * 0.5
     );
   } else if (textCount === 2) {
     text(
       "그러나 어두운 밤하늘의 길잡이가 되어준 별에게 비는 소원은\n" +
         "길을 잃지 않고 신들에게 닿을지도 모르죠.",
       width * 0.5,
-      height * 0.6
+      height * 0.5
     );
   } else if (textCount === 3) {
     text(
       "올 한 해를 되돌아보며 의미있는 순간들을 담아보세요.\n" +
         "지나간 시간들이 자취로 남아 앞으로를 향한 소원을 이루어줄 테니까요.",
       width * 0.5,
-      height * 0.6
+      height * 0.5
     );
   }
 }
