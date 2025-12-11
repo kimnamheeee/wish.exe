@@ -117,6 +117,14 @@ const shapeMapping = {
   4: "오각형의",
 };
 
+const colorMapping = {
+  0: "초록색",
+  1: "파랑색",
+  2: "분홍색",
+  3: "보라색",
+  4: "노랑색",
+};
+
 const LLM_API_URL = "https://p5-llm-server.vercel.app/api/llm";
 const UPLOAD_API_URL = "https://p5-llm-server.vercel.app/api/upload";
 
@@ -406,6 +414,9 @@ function draw() {
     case "question_1":
       question_1();
       break;
+    case "description_2":
+      description_2();
+      break;
     case "loading_2":
       loading_2();
       break;
@@ -439,6 +450,13 @@ function description_1() {
   if (revealedStars >= stars.length) {
     mode = "question_2";
   }
+}
+
+function description_2() {
+  renderMainStars(targetBase);
+  renderLoadingText(
+    `감정에 따라 별이 제각기 다른 색으로 빛나기 시작해요.\n2025년에는 [${emotionMapping[emotionResult]}]을(를) 가장 자주 느끼셨네요.\n당신의 감정은 [${colorMapping[emotionResult]}]으로 빛날 거예요.`
+  );
 }
 
 function keyPressed() {
@@ -719,10 +737,10 @@ function loading_2() {
 
   renderLoadingText(factLoading);
 
-  // 감정 분석이 끝난 뒤, 색칠 애니메이션은 한 번만 시작되도록 처리
   if (emotionResults[1] !== null && !hasStartedStarColoring) {
     hasStartedStarColoring = true;
     startStarColoring();
+    mode = "description_2";
   }
 }
 
