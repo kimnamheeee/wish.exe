@@ -357,6 +357,35 @@ function getUserInput() {
   }
 }
 
+let showInputWarning = false;
+let inputWarningStartTime = 0;
+
+function isInputEmpty() {
+  if (!inputBox) return true;
+  const value = inputBox.value().trim();
+  return value === "";
+}
+
+function drawInputWarning() {
+  if (!showInputWarning) return;
+
+  const DURATION = 1500;
+  if (millis() - inputWarningStartTime > DURATION) {
+    showInputWarning = false;
+    return;
+  }
+
+  const x = width / 2;
+  const y = height * 0.95;
+
+  push();
+  fill(255, 80, 80);
+  textAlign(CENTER, CENTER);
+  textSize(rh(SMALL_TEXT_SIZE));
+  text("내용을 입력한 뒤 Enter를 눌러주세요.", x, y);
+  pop();
+}
+
 function renderAnswerInput() {
   image(inputImage, width / 2, height * 0.82, 700, 180);
   if (!inputBox) {
@@ -378,6 +407,8 @@ function renderAnswerInput() {
     inputBox.attribute("placeholder", "여기에 입력하세요...");
     inputBox.attribute("required", "true");
   }
+
+  drawInputWarning();
 }
 
 function stars_loc() {
@@ -952,6 +983,12 @@ function keyTyped() {
 }
 
 function input_1() {
+  if (isInputEmpty()) {
+    showInputWarning = true;
+    inputWarningStartTime = millis();
+    return;
+  }
+  showInputWarning = false;
   getUserInput();
   mode = "loading_1";
   loadingStartTime = millis();
@@ -1000,6 +1037,12 @@ function question_2() {
 }
 
 function input_2() {
+  if (isInputEmpty()) {
+    showInputWarning = true;
+    inputWarningStartTime = millis();
+    return;
+  }
+  showInputWarning = false;
   getUserInput();
   mode = "loading_2";
   emotionResult = null;
@@ -1079,6 +1122,12 @@ function question_3() {
 }
 
 function input_3() {
+  if (isInputEmpty()) {
+    showInputWarning = true;
+    inputWarningStartTime = millis();
+    return;
+  }
+  showInputWarning = false;
   getUserInput();
   emotionResult = null;
   hasCalledLLM = false;
@@ -1179,6 +1228,12 @@ function question_4() {
 }
 
 function input_4() {
+  if (isInputEmpty()) {
+    showInputWarning = true;
+    inputWarningStartTime = millis();
+    return;
+  }
+  showInputWarning = false;
   getUserInput();
   mode = "drag_stars";
   hasCalledLLM = false;
