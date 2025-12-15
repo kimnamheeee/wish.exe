@@ -56,6 +56,10 @@ let uploadRequestId = 0;
 
 let resetButtonImg = null;
 
+const LARGE_TEXT_SIZE = 52;
+const MEDIUM_TEXT_SIZE = 40;
+const SMALL_TEXT_SIZE = 32;
+
 function uploadCapture(base64) {
   if (!base64 || hasUploadedCapture) return;
   hasUploadedCapture = true;
@@ -291,13 +295,13 @@ function loadingUI() {
     lastTextChange = millis();
   }
 
-  textSize(32);
+  textSize(rh(MEDIUM_TEXT_SIZE));
   text(loadingMessages[loadingTextIndex], width / 2, height * 0.3);
 
   let dots = floor((millis() / 400) % 4);
   let dotString = ".".repeat(dots);
 
-  textSize(28);
+  textSize(rh(MEDIUM_TEXT_SIZE));
   text(dotString, width / 2, height * 0.38);
 }
 
@@ -358,9 +362,9 @@ function renderMainStars() {
 function renderQuestionText(txt) {
   fill(255);
   textAlign(CENTER, CENTER);
-  textSize(28);
+  textSize(rh(MEDIUM_TEXT_SIZE));
 
-  text(txt, width / 2, height * 0.67);
+  text(txt, width / 2, height * 0.68);
 }
 
 function getUserInput() {
@@ -382,13 +386,14 @@ function renderAnswerInput() {
     inputBox.position(x, y);
     inputBox.size(600, 60);
 
-    inputBox.style("font-size", "24px");
+    inputBox.style("font-size", `${rh(SMALL_TEXT_SIZE)}px`);
     inputBox.style("color", "white");
     inputBox.style("text-align", "center");
     inputBox.style("background", "none");
     inputBox.style("outline", "none");
     inputBox.style("border", "none");
     inputBox.style("font-family", "pokemon");
+    inputBox.attribute("placeholder", "여기에 입력하세요...");
   }
 }
 
@@ -500,52 +505,50 @@ function setup() {
 function draw() {
   backgroundStar();
 
-  last();
-
-  // switch (mode) {
-  //   case "main":
-  //     main_frame();
-  //     break;
-  //   case "intro":
-  //     intro();
-  //     break;
-  //   case "loading_1":
-  //     loading_1();
-  //     break;
-  //   case "description_1":
-  //     description_1();
-  //     break;
-  //   case "question_1":
-  //     question_1();
-  //     break;
-  //   case "description_2":
-  //     description_2();
-  //     break;
-  //   case "loading_2":
-  //     loading_2();
-  //     break;
-  //   case "question_2":
-  //     question_2();
-  //     break;
-  //   case "loading_3":
-  //     loading_3();
-  //     break;
-  //   case "description_3":
-  //     description_3();
-  //     break;
-  //   case "question_3":
-  //     question_3();
-  //     break;
-  //   case "question_4":
-  //     question_4();
-  //     break;
-  //   case "drag_stars":
-  //     drag_stars();
-  //     break;
-  //   case "last":
-  //     last();
-  //     break;
-  // }
+  switch (mode) {
+    case "main":
+      main_frame();
+      break;
+    case "intro":
+      intro();
+      break;
+    case "loading_1":
+      loading_1();
+      break;
+    case "description_1":
+      description_1();
+      break;
+    case "question_1":
+      question_1();
+      break;
+    case "description_2":
+      description_2();
+      break;
+    case "loading_2":
+      loading_2();
+      break;
+    case "question_2":
+      question_2();
+      break;
+    case "loading_3":
+      loading_3();
+      break;
+    case "description_3":
+      description_3();
+      break;
+    case "question_3":
+      question_3();
+      break;
+    case "question_4":
+      question_4();
+      break;
+    case "drag_stars":
+      drag_stars();
+      break;
+    case "last":
+      last();
+      break;
+  }
 }
 
 function description_1() {
@@ -707,8 +710,7 @@ function renderLoadingText(textString) {
   const paddingX = 64;
   const paddingY = 16;
 
-  const fontSize = 24;
-  textSize(fontSize);
+  textSize(rh(SMALL_TEXT_SIZE));
   textAlign(LEFT, TOP);
 
   let maxLineWidth = 0;
@@ -719,7 +721,7 @@ function renderLoadingText(textString) {
 
   const bubbleWidth = maxLineWidth + paddingX * 2;
 
-  const lineHeight = fontSize + 8;
+  const lineHeight = rh(SMALL_TEXT_SIZE) + 8;
   const textHeight = lines.length * lineHeight;
 
   const bubbleHeight = textHeight + paddingY * 2;
@@ -759,11 +761,10 @@ function intro_text() {
   fill(255);
   textAlign(CENTER, CENTER);
 
-  textSize(24);
+  textSize(rh(MEDIUM_TEXT_SIZE));
   text("--> Next (Press Enter)", width * 0.8, height * 0.9);
 
-  // 본문 텍스트
-  textSize(32);
+  textSize(rh(LARGE_TEXT_SIZE));
 
   if (textCount === 0) {
     text(
@@ -1228,7 +1229,7 @@ function draw_dragImage() {
   } else {
     fill(255);
     textAlign(CENTER, CENTER);
-    textSize(24);
+    textSize(rh(MEDIUM_TEXT_SIZE));
     text("이미지를 불러오는 중입니다...", width / 2, height / 2);
   }
 }
@@ -1264,7 +1265,7 @@ async function goToLastMode() {
 }
 
 function renderDragInstruction() {
-  textSize(24);
+  textSize(rh(MEDIUM_TEXT_SIZE));
   textAlign(CENTER, CENTER);
   fill(255);
 
@@ -1292,7 +1293,7 @@ function last() {
   draw_dragImage();
   renderMainStars();
 
-  textSize(24);
+  textSize(rh(MEDIUM_TEXT_SIZE));
   textAlign(CENTER, CENTER);
   fill(255);
   text(userInput, width / 2, height * 0.8);
@@ -1503,7 +1504,7 @@ function reset() {
     rw(100)
   );
 
-  textSize(rh(24));
+  textSize(rh(SMALL_TEXT_SIZE));
   const textW = textWidth("1분 후 자동으로처음 화면으로 돌아갑니다.");
   col.add(
     () => {
