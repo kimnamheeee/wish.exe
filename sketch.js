@@ -614,7 +614,10 @@ function keyPressed() {
     input_4();
   }
 
-  if (keyCode === BACKSPACE || keyCode === ESCAPE) {
+  if (
+    keyCode === ESCAPE ||
+    (keyCode === BACKSPACE && !mode.startsWith("question_"))
+  ) {
     handleBack();
     return false;
   }
