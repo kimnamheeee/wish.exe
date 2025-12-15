@@ -376,6 +376,7 @@ function renderAnswerInput() {
     inputBox.style("border", "none");
     inputBox.style("font-family", "pokemon");
     inputBox.attribute("placeholder", "여기에 입력하세요...");
+    inputBox.attribute("required", "true");
   }
 }
 
@@ -487,52 +488,50 @@ function setup() {
 function draw() {
   backgroundStar();
 
-  renderStarInfo();
-
-  // switch (mode) {
-  //   case "main":
-  //     main_frame();
-  //     break;
-  //   case "intro":
-  //     intro();
-  //     break;
-  //   case "loading_1":
-  //     loading_1();
-  //     break;
-  //   case "description_1":
-  //     description_1();
-  //     break;
-  //   case "question_1":
-  //     question_1();
-  //     break;
-  //   case "description_2":
-  //     description_2();
-  //     break;
-  //   case "loading_2":
-  //     loading_2();
-  //     break;
-  //   case "question_2":
-  //     question_2();
-  //     break;
-  //   case "loading_3":
-  //     loading_3();
-  //     break;
-  //   case "description_3":
-  //     description_3();
-  //     break;
-  //   case "question_3":
-  //     question_3();
-  //     break;
-  //   case "question_4":
-  //     question_4();
-  //     break;
-  //   case "drag_stars":
-  //     drag_stars();
-  //     break;
-  //   case "last":
-  //     last();
-  //     break;
-  // }
+  switch (mode) {
+    case "main":
+      main_frame();
+      break;
+    case "intro":
+      intro();
+      break;
+    case "loading_1":
+      loading_1();
+      break;
+    case "description_1":
+      description_1();
+      break;
+    case "question_1":
+      question_1();
+      break;
+    case "description_2":
+      description_2();
+      break;
+    case "loading_2":
+      loading_2();
+      break;
+    case "question_2":
+      question_2();
+      break;
+    case "loading_3":
+      loading_3();
+      break;
+    case "description_3":
+      description_3();
+      break;
+    case "question_3":
+      question_3();
+      break;
+    case "question_4":
+      question_4();
+      break;
+    case "drag_stars":
+      drag_stars();
+      break;
+    case "last":
+      last();
+      break;
+  }
 }
 
 function description_1() {
@@ -678,7 +677,6 @@ function drawImageAspect(img, x, y, maxW, maxH) {
 function main_frame() {
   stroke(255);
   fill(255);
-
   renderSavedStars();
 
   drawImageAspect(titleImage, width * 0.5, height * 0.45, width, height);
@@ -741,7 +739,6 @@ function intro() {
 }
 
 function intro_text() {
-  stroke(255);
   fill(255);
   textAlign(CENTER, CENTER);
 
@@ -784,105 +781,140 @@ function intro_text() {
   }
 }
 
+function drawTooltip(textStr, x, y) {
+  const padding = 8;
+
+  const tw = textWidth(textStr);
+  const th = textAscent() + textDescent();
+
+  push();
+  rectMode(CENTER);
+  textSize(rh(SMALL_TEXT_SIZE));
+  textAlign(CENTER, CENTER);
+  noStroke();
+  fill(0, 180);
+  rect(x, y - th - 20, tw + padding * 2, th + padding * 2, 6);
+
+  fill(255);
+  text(textStr, x, y - th - 20);
+  pop();
+}
+
 function renderStarInfo() {
-  stroke(255);
   fill(255);
   textAlign(CENTER, CENTER);
   textSize(rh(LARGE_TEXT_SIZE));
 
   const lineHeight = rh(LARGE_TEXT_SIZE) + 10;
   const imageSize = rh(50);
+  const gap = rh(80);
+  const imageGap = rh(30);
 
-  const rowHeight = lineHeight;
-  const totalHeight = lineHeight + 3 * rowHeight + rh(200);
-  const startY = totalHeight * 0.5;
+  const totalHeight = lineHeight + 3 * (lineHeight + gap) + lineHeight * 2;
+  let currentY = height / 2 - totalHeight / 2 + lineHeight / 2;
 
-  const col = FlexColumn({
-    x: 0,
-    y: startY,
-    width: width,
-    align: "center",
-    gap: rh(30),
-  });
+  text(
+    "3개의 질문에 따라 당신만의 별자리가 완성될 거예요.\n",
+    width / 2,
+    currentY
+  );
+  currentY += lineHeight;
 
-  col.add(() => {
-    text("3개의 질문에 따라 당신만의 별자리가 완성될 거예요.\n", 0, 0);
-  }, lineHeight);
+  text("첫 번째 질문으로 별의 모양이,\n", width / 2, currentY);
+  currentY += lineHeight;
 
-  col.add(() => {
-    text("첫 번째 질문으로 별의 모양이,\n", 0, 0);
-  }, lineHeight);
+  const imagesPerRow = 5;
+  const totalImageWidth =
+    imagesPerRow * imageSize + (imagesPerRow - 1) * imageGap;
+  let imageStartX = width / 2 - totalImageWidth / 2 + imageSize / 2;
 
-  col.add(() => {
-    const imageGap = rh(30);
+  for (let i = 0; i < 5; i++) {
+    const imgX = imageStartX + i * (imageSize + imageGap);
+    imageMode(CENTER);
 
-    const row = FlexRow({
-      x: -200,
-      y: -lineHeight,
-      height: rowHeight,
-      align: "center",
-      gap: imageGap,
-    });
+    const img = baseStarImages[i];
+    let iw = img.width;
+    let ih = img.height;
+    let ratio = min(imageSize / iw, imageSize / ih);
+    let drawW = iw * ratio;
+    let drawH = ih * ratio;
 
-    for (let i = 0; i < 5; i++) {
-      row.add(() => {
-        imageMode(CENTER);
-        drawImageAspect(baseStarImages[i], 0, 0, imageSize, imageSize);
-      }, imageSize);
+    drawImageAspect(img, imgX, currentY, imageSize, imageSize);
+
+    if (
+      mouseX >= imgX - drawW / 2 &&
+      mouseX <= imgX + drawW / 2 &&
+      mouseY >= currentY - drawH / 2 &&
+      mouseY <= currentY + drawH / 2
+    ) {
+      drawTooltip(emotionMapping[i], imgX, currentY);
     }
-  }, rowHeight);
+  }
+  currentY += lineHeight + gap;
 
-  col.add(() => {
-    text("두 번째 질문으로 별의 색상이,\n", 0, 0);
-  }, lineHeight);
+  text("두 번째 질문으로 별의 색상이,\n", width / 2, currentY);
+  currentY += lineHeight;
 
-  col.add(() => {
-    const imageGap = rh(30);
+  imageStartX = width / 2 - totalImageWidth / 2 + imageSize / 2;
+  for (let i = 0; i < 5; i++) {
+    const imgX = imageStartX + i * (imageSize + imageGap);
+    imageMode(CENTER);
 
-    const row = FlexRow({
-      x: -200,
-      y: -lineHeight,
-      height: rowHeight,
-      align: "center",
-      gap: imageGap,
-    });
+    const img = coloredStarImages[4][i];
+    let iw = img.width;
+    let ih = img.height;
+    let ratio = min(imageSize / iw, imageSize / ih);
+    let drawW = iw * ratio;
+    let drawH = ih * ratio;
 
-    for (let i = 0; i < 5; i++) {
-      row.add(() => {
-        imageMode(CENTER);
-        drawImageAspect(coloredStarImages[4][i], 0, 0, imageSize, imageSize);
-      }, imageSize);
+    drawImageAspect(img, imgX, currentY, imageSize, imageSize);
+
+    if (
+      mouseX >= imgX - drawW / 2 &&
+      mouseX <= imgX + drawW / 2 &&
+      mouseY >= currentY - drawH / 2 &&
+      mouseY <= currentY + drawH / 2
+    ) {
+      drawTooltip(emotionMapping[i], imgX, currentY);
     }
-  }, rowHeight);
+  }
+  currentY += lineHeight + gap;
 
-  col.add(() => {
-    text("세 번째 질문으로 별의 밝기가 결정될 거예요.\n", 0, 0);
-  }, lineHeight);
+  text("세 번째 질문으로 별의 밝기가 결정될 거예요.\n", width / 2, currentY);
+  currentY += lineHeight;
 
-  col.add(() => {
-    const imageGap = rh(30);
-    const row = FlexRow({
-      x: -200,
-      y: -lineHeight,
-      height: rowHeight,
-      align: "center",
-      gap: imageGap,
-    });
+  imageStartX = width / 2 - totalImageWidth / 2 + imageSize / 2;
+  for (let i = 0; i < 5; i++) {
+    const scale = 1.5 + i * 0.15;
+    const imgX = imageStartX + i * (imageSize + imageGap);
+    imageMode(CENTER);
 
-    for (let i = 0; i < 5; i++) {
-      const scale = 1.5 + i * 0.15;
-      row.add(() => {
-        imageMode(CENTER);
-        drawImageAspect(
-          lumStarImages[4][4][i],
-          0,
-          0,
-          imageSize * scale,
-          imageSize * scale
-        );
-      }, imageSize);
+    const img = lumStarImages[4][4][i];
+    let iw = img.width;
+    let ih = img.height;
+    let ratio = min((imageSize * scale) / iw, (imageSize * scale) / ih);
+    let drawW = iw * ratio;
+    let drawH = ih * ratio;
+
+    drawImageAspect(img, imgX, currentY, imageSize * scale, imageSize * scale);
+
+    if (
+      mouseX >= imgX - drawW / 2 &&
+      mouseX <= imgX + drawW / 2 &&
+      mouseY >= currentY - drawH / 2 &&
+      mouseY <= currentY + drawH / 2
+    ) {
+      drawTooltip(lumMapping[i], imgX, currentY);
     }
-  }, rowHeight);
+  }
+  currentY += lineHeight + gap;
+  textSize(rh(SMALL_TEXT_SIZE));
+  fill(128);
+  text(
+    "각 별 위에 마우스를 올리면 별의 정보를 확인할 수 있어요.\n",
+    width / 2,
+    currentY
+  );
 }
 
 //질문 1
