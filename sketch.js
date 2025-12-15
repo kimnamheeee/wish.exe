@@ -582,6 +582,30 @@ function keyPressed() {
   } else if (keyCode === ENTER && mode === "question_4") {
     input_4();
   }
+
+  if (keyCode === BACKSPACE || keyCode === ESCAPE) {
+    handleBack();
+    return false;
+  }
+}
+
+function handleBack() {
+  if (mode === "intro") {
+    if (textCount > 0) {
+      textCount -= 1;
+    } else {
+      mode = "main";
+    }
+  } else if (mode === "question_1") {
+    mode = "intro";
+    textCount = 4;
+  } else if (mode === "question_2") {
+    mode = "question_1";
+  } else if (mode === "question_3") {
+    mode = "question_2";
+  } else if (mode === "question_4") {
+    mode = "question_3";
+  }
 }
 
 let shootingStars = [];
@@ -744,6 +768,7 @@ function intro_text() {
 
   textSize(rh(MEDIUM_TEXT_SIZE));
   text("--> Next (Press Enter)", width * 0.8, height * 0.9);
+  text("<-- Back (Backspace)", width * 0.2, height * 0.9);
 
   textSize(rh(LARGE_TEXT_SIZE));
 
