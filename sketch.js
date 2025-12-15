@@ -596,15 +596,6 @@ function handleBack() {
     } else {
       mode = "main";
     }
-  } else if (mode === "question_1") {
-    mode = "intro";
-    textCount = 4;
-  } else if (mode === "question_2") {
-    mode = "question_1";
-  } else if (mode === "question_3") {
-    mode = "question_2";
-  } else if (mode === "question_4") {
-    mode = "question_3";
   }
 }
 
