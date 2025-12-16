@@ -333,7 +333,7 @@ async function callLLM(systemPrompt, userText) {
     }),
   });
 
-  await delay(10000);
+  // await delay(10000);
 
   const data = await res.json();
   const reply = data.choices?.[0]?.message?.content ?? "(no reply)";
@@ -422,8 +422,8 @@ function renderMainStars() {
       s.image,
       s.x,
       s.y,
-      30 * scale * sizeScale,
-      30 * scale * sizeScale
+      rh(40 * scale * sizeScale),
+      rh(40 * scale * sizeScale)
     );
   }
 }
@@ -1297,7 +1297,8 @@ function lumNextStar() {
   let img =
     lumStarImages[emotionResults[0]][emotionResults[1]][intensityResult];
   stars[starLumIndex].image = img;
-  stars[starLumIndex].sizeScale = 2;
+  const scale = 1.5 + intensityResult * 0.15;
+  stars[starLumIndex].sizeScale = scale;
   triggerPop(stars[starLumIndex]);
   starLumIndex++;
 
