@@ -736,7 +736,7 @@ function handleBack() {
 }
 
 let shootingStars = [];
-let NUM_STARS = 120;
+let NUM_STARS = 200;
 
 function initStars() {
   back_stars = [];
@@ -744,7 +744,7 @@ function initStars() {
     back_stars.push({
       x: random(width),
       y: random(height),
-      baseSize: random(1, 3),
+      baseSize: random(0.2, 2),
       sizeOffset: random(0, TWO_PI),
       baseBrightness: random(150, 255),
       brightOffset: random(0, TWO_PI),
@@ -793,16 +793,17 @@ function backgroundStar() {
 
   noStroke();
   for (let s of back_stars) {
-    const b =
-      s.baseBrightness + sin(frameCount * s.twinkleSpeed + s.brightOffset) * 50;
+    const tw = sin(frameCount * s.twinkleSpeed + s.brightOffset);
 
-    const sz =
-      s.baseSize + sin(frameCount * s.twinkleSpeed + s.sizeOffset) * 0.5;
+    const flicker = random(4);
+
+    const b = s.baseBrightness + tw * 40 * flicker;
+
+    const sz = s.baseSize + tw * 0.6 * flicker;
 
     fill(b);
     ellipse(s.x, s.y, sz, sz);
   }
-
   spawnShootingStar();
   updateShootingStars();
   drawShootingStars();
