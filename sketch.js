@@ -402,7 +402,7 @@ function renderAnswerInput() {
     inputBox.style("outline", "none");
     inputBox.style("border", "none");
     inputBox.style("font-family", "pokemon");
-    inputBox.attribute("placeholder", "여기에 입력하세요...");
+    inputBox.attribute("placeholder", "여기에 입력하세요... (입력 후 Enter)");
     inputBox.attribute("required", "true");
   }
 
@@ -998,7 +998,7 @@ let inputBox;
 
 function question_1() {
   renderQuestionText(
-    "2025년에 시간과 에너지를 가장 많이 투자한 일은 무엇이었나요?\n그 일의 성과는 어떠했나요?"
+    "2025년에 시간과 에너지를 가장 많이 투자한 일의 성과는 어떠했나요?"
   );
 
   renderAnswerInput();
@@ -1058,9 +1058,7 @@ function loading_1() {
 
 function question_2() {
   renderMainStars();
-  renderQuestionText(
-    "2025년에 가장 많이 했던 생각은 무엇인가요?\n2025년에 가장 자주 했던 말은 무엇인가요?"
-  );
+  renderQuestionText("2025년에 가장 많이 했던 생각은 무엇인가요?");
   renderAnswerInput();
 }
 
