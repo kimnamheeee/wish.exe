@@ -1104,7 +1104,7 @@ function renderConstellationSample() {
   }
 
   const elapsedTime = millis() - constellationSampleStartTime;
-  const cycleTime = (elapsedTime / 2000) % 4;
+  const cycleTime = (elapsedTime / 1200) % 4;
   const currentPhase = floor(cycleTime);
 
   if (currentPhase === 0) {
