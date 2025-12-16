@@ -468,7 +468,7 @@ const lumStarImages = Array.from({ length: 5 }, () =>
 );
 
 function preload() {
-  dragImage_1 = loadImage("images/dragImage_1.png");
+  dragImage_1 = loadImage("images/constellation/dragImage_1.png");
   titleImage = loadImage("images/title.png");
   titleDescription = loadImage("images/title_description.png");
   font = loadFont("fonts/pokemon.ttf");
@@ -556,6 +556,9 @@ function draw() {
       break;
     case "drag_stars":
       drag_stars();
+      break;
+    case "loadingLast":
+      loadingLast();
       break;
     case "last":
       last();
@@ -1450,8 +1453,8 @@ function drag_stars() {
 let lastEnteredAt = 0; //last 모드 진입 시각
 
 async function goToLastMode() {
-  await delay(3000); // 3초 기다림
-  mode = "last";
+  await delay(1000);
+  mode = "loadingLast";
   lastEnteredAt = millis();
 }
 
@@ -1465,6 +1468,18 @@ function renderDragInstruction() {
     width / 2,
     height * 0.8
   );
+  
+  textSize(15);
+  text(
+    `-주의사항-
+    1. 별을 마우스로 클릭한 뒤, 클릭한 상태로 별자리 선 위의 점 위치로 별을 가져다 놓아주세요.
+    2. 모든 별을 마우스로 한 번 이상 클릭해야 합니다.
+    3. 만약 별자리가 완성된 것처럼 보이나 다음 화면으로 넘어가지 않는다면, 모든 별들을 한 번씩 마우스로 건드려 보세요.
+    4. 오류가 발생한다면 -처음으로- 글씨를 클릭해주시길 바랍니다.
+    `,
+    width /2,
+    height * 0.9
+  )
 }
 
 function renderStarsTargets() {
@@ -1477,6 +1492,31 @@ function renderStarsTargets() {
   //     ellipse(t.x, t.y, 20, 20);   // 지름 20 원
   //   }
 }
+
+function loadingLast(){
+  backgroundStar();  
+  fill(255);
+  textAlign(CENTER, CENTER);
+  textSize(rh(MEDIUM_TEXT_SIZE));
+  text("당신의 별자리가 완성되었습니다. 잠시만 기다려 주세요...", width / 2, height * 0.4);
+
+  let dots = floor((millis() / 400) % 4);
+  let dotString = ".".repeat(dots);
+
+  textSize(rh(MEDIUM_TEXT_SIZE));
+  text(dotString, width / 2, height * 0.5);
+
+  goToLastMode_2();
+}
+
+let loadingLasttime = 0;
+
+async function goToLastMode_2() {
+  await delay(5000);
+  mode = "last";
+  loadingLasttime = millis();
+}
+
 
 function last() {
   //최종화면
@@ -1599,8 +1639,8 @@ function renderSavedStars() {
 
     const distFromCenter = Math.abs(i - 2);
     let yValues = {
-      0: 0.25,
-      1: 0.75,
+      0: 0.2,
+      1: 0.8,
       2: 0.5,
     };
     const backY = height * yValues[distFromCenter];

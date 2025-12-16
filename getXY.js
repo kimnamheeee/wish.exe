@@ -1,11 +1,19 @@
 
 let points = [];
 let dragImage_1;
-
+let dragImages = [];
 
 function preload() {
-  //나중에 for문으로 전체 image로딩 해도 좋을 것 같습니다.
-  dragImage_1 = loadImage("images/dragImage_1.png");
+  drageImage_1 = loadImage("images/constellation/dragImage_1.png")
+  for (let i = 1; i <= 5; i++) {
+    dragImages[i] = [];   // 각 그룹 초기화
+
+    for (let j = 1; j <= 2; j++) {
+      dragImages[i][j] = loadImage(
+        `images/constellation/dragImage_${i}_${j}.png`
+      );
+    }
+  }
 }
 
 function setup() {
