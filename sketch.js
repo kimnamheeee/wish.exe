@@ -8,6 +8,7 @@ let loadingDuration = 5000;
 let isCallingLLM = false;
 let emotionResult = null;
 let messageResult = null;
+let constellationSampleResult = null;
 
 const emotionResults = new Array(5).fill(null);
 
@@ -52,6 +53,9 @@ let qrcodeSkeletonElement;
 let uploadRequestId = 0;
 
 let resetButtonImg = null;
+
+let constellationSampleStarPositions = null;
+let constellationSampleStartTime = null;
 
 const LARGE_TEXT_SIZE = 52;
 const MEDIUM_TEXT_SIZE = 40;
@@ -574,6 +578,7 @@ function preload() {
   font = loadFont("fonts/pokemon.ttf");
   dialogImage = loadImage("images/dialog.png");
   inputImage = loadImage("images/input.png");
+  constellationSampleResult = loadImage("images/sample_constellation.png");
   resetButtonImg = loadImage("images/reset.png");
   for (let i = 0; i < 5; i++) {
     baseStarImages[i] = loadImage(`images/stars/${i}/star.png`);
@@ -701,7 +706,7 @@ function keyPressed() {
   }
   // 인트로에서 Enter -> 다음 문장으로
   else if (keyCode === ENTER && mode === "intro") {
-    if (textCount < 4) {
+    if (textCount < 5) {
       textCount += 1; // 0→1→2→3
     } else {
       mode = "question_1"; // 마지막 문장 보고 나면 다음 화면으로
@@ -736,7 +741,7 @@ function handleBack() {
 }
 
 let shootingStars = [];
-let NUM_STARS = 200;
+let NUM_STARS = 150;
 
 function initStars() {
   back_stars = [];
@@ -931,7 +936,111 @@ function intro_text() {
     );
   } else if (textCount === 4) {
     renderStarInfo();
+  } else if (textCount === 5) {
+    renderConstellationSample();
   }
+}
+
+function renderConstellationSample() {
+  const starAreaWidth = width * 0.7;
+  const starAreaHeight = height * 0.55;
+  const starAreaCenterY = height * 0.35;
+
+  const minX = width * 0.15;
+  const maxX = width * 0.85;
+  const minY = height * 0.1;
+  const maxY = height * 0.55;
+  const starSize = rh(40);
+
+  if (!constellationSampleStarPositions) {
+    constellationSampleStarPositions = [];
+    const MIN_DIST = 50;
+
+    for (let i = 0; i < 11; i++) {
+      let x, y;
+      let safe = false;
+      let attempts = 0;
+
+      while (!safe && attempts < 200) {
+        attempts++;
+        x = random(minX, maxX);
+        y = random(minY, maxY);
+
+        safe = true;
+        for (let s of constellationSampleStarPositions) {
+          let d = dist(x, y, s.x, s.y);
+          if (d < MIN_DIST) {
+            safe = false;
+            break;
+          }
+        }
+      }
+
+      constellationSampleStarPositions.push({ x, y });
+    }
+  }
+
+  if (constellationSampleStartTime === null) {
+    constellationSampleStartTime = millis();
+  }
+
+  const elapsedTime = millis() - constellationSampleStartTime;
+  const cycleTime = (elapsedTime / 2000) % 4;
+  const currentPhase = floor(cycleTime);
+
+  if (currentPhase === 0) {
+    for (let i = 0; i < 11; i++) {
+      const pos = constellationSampleStarPositions[i];
+      if (baseStarImages[1]) {
+        drawImageAspect(baseStarImages[1], pos.x, pos.y, starSize, starSize);
+      }
+    }
+  } else if (currentPhase === 1) {
+    for (let i = 0; i < 11; i++) {
+      const pos = constellationSampleStarPositions[i];
+      if (coloredStarImages[1] && coloredStarImages[1][4]) {
+        drawImageAspect(
+          coloredStarImages[1][4],
+          pos.x,
+          pos.y,
+          starSize,
+          starSize
+        );
+      }
+    }
+  } else if (currentPhase === 2) {
+    for (let i = 0; i < 11; i++) {
+      const pos = constellationSampleStarPositions[i];
+      if (lumStarImages[1] && lumStarImages[1][4] && lumStarImages[1][4][0]) {
+        drawImageAspect(
+          lumStarImages[1][4][0],
+          pos.x,
+          pos.y,
+          starSize * 1.5,
+          starSize * 1.5
+        );
+      }
+    }
+  } else if (currentPhase === 3) {
+    drawImageAspect(
+      constellationSampleResult,
+      width * 0.5,
+      starAreaCenterY,
+      starAreaWidth,
+      starAreaHeight * 1.2
+    );
+  }
+
+  push();
+  textAlign(CENTER, CENTER);
+  textSize(rh(MEDIUM_TEXT_SIZE));
+  fill(255);
+  text(
+    "총 3개의 질문을 통해 2025년을 되돌아보세요.\n2025년의 감정을 정리하고, 2026년을 위한 소원을 담아\n당신만의 별자리로 하늘을 수놓을 수 있도록 도와드릴게요.",
+    width * 0.5,
+    height * 0.8
+  );
+  pop();
 }
 
 function drawTooltip(textStr, x, y, direction = "up") {
