@@ -1,4 +1,5 @@
 let userInput = "";
+let userInputs = []; // 모든 질문에 대한 답변 저장
 let back_stars = [];
 
 let loadingProgress = 0;
@@ -494,15 +495,15 @@ function drawInputWarning() {
 }
 
 function renderAnswerInput() {
-  image(inputImage, width / 2, height * 0.82, 700, 180);
+  drawImageAspect(inputImage, width / 2, height * 0.82, 700, 180);
   if (!inputBox) {
     inputBox = createInput("");
 
-    let x = (width - 600) / 2;
+    let x = (width - 300) / 2;
     let y = height * 0.8;
 
     inputBox.position(x, y);
-    inputBox.size(600, 60);
+    inputBox.size(300, 60);
 
     inputBox.style("font-size", `${rh(SMALL_TEXT_SIZE)}px`);
     inputBox.style("color", "white");
@@ -636,6 +637,7 @@ function setup() {
 }
 
 function draw() {
+  // last();
   backgroundStar();
 
   switch (mode) {
@@ -1353,6 +1355,7 @@ function input_1() {
   }
   showInputWarning = false;
   getUserInput();
+  userInputs.push(userInput); // 첫 번째 답변 저장
   mode = "loading_1";
   loadingStartTime = millis();
   loadingProgress = 0;
@@ -1406,6 +1409,7 @@ function input_2() {
   }
   showInputWarning = false;
   getUserInput();
+  userInputs.push(userInput); // 두 번째 답변 저장
   mode = "loading_2";
   emotionResult = null;
   factLoading = about_stars();
@@ -1492,6 +1496,7 @@ function input_3() {
   }
   showInputWarning = false;
   getUserInput();
+  userInputs.push(userInput); // 세 번째 답변 저장
   emotionResult = null;
   hasCalledLLM = false;
   mode = "loading_3";
@@ -1600,6 +1605,7 @@ function input_4() {
   }
   showInputWarning = false;
   getUserInput();
+  userInputs.push(userInput); // 네 번째 답변(소원) 저장
   mode = "drag_stars";
   hasCalledLLM = false;
   emotionResult = null;
@@ -1962,11 +1968,38 @@ function last() {
   backgroundStar();
   draw_dragImage();
   renderMainStars();
+  push();
 
-  textSize(rh(MEDIUM_TEXT_SIZE));
   textAlign(CENTER, CENTER);
-  fill(255);
-  text(userInput, width / 2, height * 0.8);
+
+  const questions = [
+    "2025년에 시간과 에너지를 가장 많이 투자한 일의 성과는 어떠했나요?",
+    "2025년에 가장 많이 했던 생각은 무엇인가요?",
+    "지나간 2025년의 하루로 돌아갈 수 있다면, 그날의 자신에게 어떤 말을 해주고 싶나요?",
+    "2026년에 이루고 싶은 소망",
+  ];
+
+  let yPos = height * 0.72;
+  const questionTextSize = rh(24);
+  const answerTextSize = rh(20);
+  const questionLineHeight = questionTextSize + 2;
+  const answerLineHeight = answerTextSize + 4;
+
+  for (let i = 0; i < userInputs.length; i++) {
+    if (i < questions.length) {
+      textSize(questionTextSize);
+      fill(180);
+      text(questions[i], width / 2, yPos);
+      yPos += questionLineHeight;
+    }
+
+    textSize(answerTextSize);
+    fill(255);
+    text(userInputs[i], width / 2, yPos);
+    yPos += answerLineHeight + 8;
+  }
+
+  pop();
 
   if (!hasUploadedCapture) {
     let cropped = get(
@@ -2202,6 +2235,7 @@ function hardResetToMain() {
   clearTimeout(timer);
   uploadRequestId += 1;
   userInput = "";
+  userInputs = [];
   back_stars = [];
 
   loadingProgress = 0;
