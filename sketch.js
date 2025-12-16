@@ -754,7 +754,7 @@ function initStars() {
 }
 
 function spawnShootingStar() {
-  if (random() < 0.005) {
+  if (random() < 0.003) {
     shootingStars.push({
       x: random(width),
       y: random(height * 0.4),
