@@ -672,10 +672,12 @@ function draw() {
 }
 
 function description_1() {
+  const emotionText = emotionMapping[emotionResult];
   renderLoadingText(
     `${messageResult}
-    감정에 따라 탄생하는 별의 모양이 달라져요.\n2025년 가장 많은 노력을 들인 일은[${emotionMapping[emotionResult]}]과 연결되어 있네요.
-    당신의 [${emotionMapping[emotionResult]}]을 [${shapeMapping[emotionResult]}] 별에 담아볼게요.`
+    감정에 따라 탄생하는 별의 모양이 달라져요.\n2025년 가장 많은 노력을 들인 일은[${emotionText}]과 연결되어 있네요.
+    당신의 [${emotionText}]을 [${shapeMapping[emotionResult]}] 별에 담아볼게요.`,
+    [emotionText]
   );
   renderMainStars();
   if (revealedStars >= stars.length) {
@@ -685,15 +687,21 @@ function description_1() {
 
 function description_2() {
   renderMainStars();
+  const emotionText = emotionMapping[emotionResult];
+  const colorText = colorMapping[emotionResult];
   renderLoadingText(
-    `${messageResult}\n감정에 따라 별이 제각기 다른 색으로 빛나기 시작해요.\n2025년에는 [${emotionMapping[emotionResult]}]을(를) 가장 자주 느끼셨네요.\n당신의 감정은 [${colorMapping[emotionResult]}]으로 빛날 거예요.`
+    `${messageResult}\n감정에 따라 별이 제각기 다른 색으로 빛나기 시작해요.\n2025년에는 [${emotionText}]을(를) 가장 자주 느끼셨네요.\n당신의 감정은 [${colorText}]으로 빛날 거예요.`,
+    [emotionText, colorText]
   );
 }
 
 function description_3() {
   renderMainStars();
+  const emotionText = emotionMapping[emotionResult];
+  const lumText = lumMapping[intensityResult];
   renderLoadingText(
-    `${messageResult}\n2025년의 스스로에게 [${emotionMapping[emotionResult]}]을 [${lumMapping[intensityResult]}] 갖고 있네요.\n당신의 감정은 [${lumMapping[intensityResult]}] 빛날 거예요.`
+    `${messageResult}\n2025년의 스스로에게 [${emotionText}]을 [${lumText}] 갖고 있네요.\n당신의 감정은 [${lumText}] 빛날 거예요.`,
+    [emotionText, lumText]
   );
 }
 
@@ -840,7 +848,7 @@ function main_frame() {
   drawImageAspect(titleDescription, width * 0.5, height * 0.8, 400, height);
 }
 
-function renderLoadingText(textString) {
+function renderLoadingText(textString, highlightTexts = []) {
   if (!dialogImage) return;
 
   const textStr = String(textString ?? "");
@@ -852,31 +860,142 @@ function renderLoadingText(textString) {
   textSize(rh(SMALL_TEXT_SIZE));
   textAlign(LEFT, TOP);
 
-  let maxLineWidth = 0;
-  for (let line of lines) {
-    const w = textWidth(line);
-    if (w > maxLineWidth) maxLineWidth = w;
-  }
+  if (highlightTexts.length > 0) {
+    let maxLineWidth = 0;
+    for (let line of lines) {
+      const w = textWidth(line);
+      if (w > maxLineWidth) maxLineWidth = w;
+    }
 
-  const bubbleWidth = maxLineWidth + paddingX * 2;
+    const bubbleWidth = maxLineWidth + paddingX * 2;
+    const lineHeight = rh(SMALL_TEXT_SIZE) + 8;
+    const textHeight = lines.length * lineHeight;
+    const bubbleHeight = textHeight + paddingY * 2;
 
-  const lineHeight = rh(SMALL_TEXT_SIZE) + 8;
-  const textHeight = lines.length * lineHeight;
+    const cx = width / 2;
+    const cy = height * 0.8;
 
-  const bubbleHeight = textHeight + paddingY * 2;
+    image(dialogImage, cx, cy, bubbleWidth, bubbleHeight + 350);
 
-  const cx = width / 2;
-  const cy = height * 0.8;
+    const startY = cy - bubbleHeight / 2;
 
-  image(dialogImage, cx, cy, bubbleWidth, bubbleHeight + 350);
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const y = startY + paddingY + i * lineHeight;
 
-  fill(0);
-  textAlign(CENTER);
+      let highlights = [];
+      for (let highlightText of highlightTexts) {
+        let searchIndex = 0;
+        while (true) {
+          const index = line.indexOf(highlightText, searchIndex);
+          if (index === -1) break;
+          highlights.push({
+            text: highlightText,
+            start: index,
+            end: index + highlightText.length,
+          });
+          searchIndex = index + 1;
+        }
+      }
+      highlights.sort((a, b) => a.start - b.start);
 
-  const startY = cy - bubbleHeight / 2;
+      let mergedHighlights = [];
+      for (let h of highlights) {
+        if (
+          mergedHighlights.length === 0 ||
+          h.start >= mergedHighlights[mergedHighlights.length - 1].end
+        ) {
+          mergedHighlights.push({ ...h });
+        } else {
+          mergedHighlights[mergedHighlights.length - 1].end = Math.max(
+            mergedHighlights[mergedHighlights.length - 1].end,
+            h.end
+          );
+          mergedHighlights[mergedHighlights.length - 1].text = line.substring(
+            mergedHighlights[mergedHighlights.length - 1].start,
+            mergedHighlights[mergedHighlights.length - 1].end
+          );
+        }
+      }
 
-  for (let i = 0; i < lines.length; i++) {
-    text(lines[i], cx, startY + i * lineHeight);
+      let segments = [];
+      let lastIndex = 0;
+
+      for (let highlight of mergedHighlights) {
+        if (highlight.start > lastIndex) {
+          segments.push({
+            text: line.substring(lastIndex, highlight.start),
+            highlight: false,
+          });
+        }
+        segments.push({
+          text: highlight.text,
+          highlight: true,
+        });
+        lastIndex = highlight.end;
+      }
+      if (lastIndex < line.length) {
+        segments.push({
+          text: line.substring(lastIndex),
+          highlight: false,
+        });
+      }
+
+      if (segments.length === 0) {
+        segments.push({ text: line, highlight: false });
+      }
+
+      textAlign(LEFT, CENTER);
+      textSize(rh(SMALL_TEXT_SIZE));
+
+      let currentLineWidth = 0;
+      for (let seg of segments) {
+        currentLineWidth += textWidth(seg.text);
+      }
+
+      let xOffset = 0;
+      const lineStartX = cx - currentLineWidth / 2;
+
+      for (let segment of segments) {
+        if (segment.highlight) {
+          fill(255, 200, 0);
+          textStyle(BOLD);
+        } else {
+          fill(0);
+          textStyle(NORMAL);
+        }
+        text(segment.text, lineStartX + xOffset, y);
+        xOffset += textWidth(segment.text);
+      }
+      textStyle(NORMAL);
+    }
+  } else {
+    let maxLineWidth = 0;
+    for (let line of lines) {
+      const w = textWidth(line);
+      if (w > maxLineWidth) maxLineWidth = w;
+    }
+
+    const bubbleWidth = maxLineWidth + paddingX * 2;
+
+    const lineHeight = rh(SMALL_TEXT_SIZE) + 8;
+    const textHeight = lines.length * lineHeight;
+
+    const bubbleHeight = textHeight + paddingY * 2;
+
+    const cx = width / 2;
+    const cy = height * 0.8;
+
+    image(dialogImage, cx, cy, bubbleWidth, bubbleHeight + 350);
+
+    fill(0);
+    textAlign(CENTER);
+
+    const startY = cy - bubbleHeight / 2;
+
+    for (let i = 0; i < lines.length; i++) {
+      text(lines[i], cx, startY + i * lineHeight);
+    }
   }
 }
 
