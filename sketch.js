@@ -804,8 +804,8 @@ function intro_text() {
   textAlign(CENTER, CENTER);
 
   textSize(rh(MEDIUM_TEXT_SIZE));
-  text("--> Next (Press Enter)", width * 0.8, height * 0.9);
-  text("<-- Back (Backspace)", width * 0.2, height * 0.9);
+  text("Next (Enter) →", width * 0.8, height * 0.9);
+  text("← Back (Backspace)", width * 0.2, height * 0.9);
 
   textSize(rh(LARGE_TEXT_SIZE));
 
