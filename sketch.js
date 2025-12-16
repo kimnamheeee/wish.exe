@@ -495,15 +495,15 @@ function drawInputWarning() {
 }
 
 function renderAnswerInput() {
-  drawImageAspect(inputImage, width / 2, height * 0.82, 700, 180);
+  image(inputImage, width / 2, height * 0.82, 700, 180);
   if (!inputBox) {
     inputBox = createInput("");
 
-    let x = (width - 300) / 2;
+    let x = (width - 600) / 2;
     let y = height * 0.8;
 
     inputBox.position(x, y);
-    inputBox.size(300, 60);
+    inputBox.size(600, 60);
 
     inputBox.style("font-size", `${rh(SMALL_TEXT_SIZE)}px`);
     inputBox.style("color", "white");
