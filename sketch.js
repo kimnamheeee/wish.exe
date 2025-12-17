@@ -63,6 +63,10 @@ let uploadRequestId = 0;
 let resetButtonImg = null;
 let homeBtn = null;
 
+let moonImage = null;
+let cloudImage = null;
+let cloudImage2 = null;
+
 let lastModeTransitionToken = 0;
 let loadingLastScheduled = false;
 
@@ -591,6 +595,9 @@ const lumStarImages = Array.from({ length: 5 }, () =>
 );
 
 function preload() {
+  moonImage = loadImage("images/moon.png");
+  cloudImage = loadImage("images/cloud.png");
+  cloudImage2 = loadImage("images/cloud2.png");
   dragImage_1 = loadImage("images/constellation/dragImage_1.png");
   for (let i = 1; i <= 5; i++) {
     dragImage[i] = []; // 각 그룹 초기화
@@ -858,6 +865,8 @@ function drawShootingStars() {
 
 function backgroundStar() {
   background(0);
+
+  drawImageAspect(moonImage, width * 0.1, height * 0.2, 200, 200);
 
   if (back_stars.length === 0) initStars();
 
