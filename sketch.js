@@ -34,7 +34,7 @@ const SNAP_THRESHOLD = 30;
 
 let img_drag;
 let img_final;
-let img_name
+let img_name;
 
 let intensityResult = null;
 let isRadarAnimating = false;
@@ -44,6 +44,8 @@ let font;
 
 let dialogImage = null;
 let inputImage = null;
+let backgroundMusic = null;
+let musicStarted = false;
 
 //참가자들 별자리 저장
 let captureLayer;
@@ -60,6 +62,10 @@ let uploadRequestId = 0;
 
 let resetButtonImg = null;
 let homeBtn = null;
+
+let moonImage = null;
+let cloudImage = null;
+let cloudImage2 = null;
 
 let lastModeTransitionToken = 0;
 let loadingLastScheduled = false;
@@ -347,7 +353,7 @@ async function callLLM(systemPrompt, userText) {
     }),
   });
 
-  // await delay(10000);
+  await delay(10000);
 
   const data = await res.json();
   const reply = data.choices?.[0]?.message?.content ?? "(no reply)";
@@ -589,6 +595,9 @@ const lumStarImages = Array.from({ length: 5 }, () =>
 );
 
 function preload() {
+  moonImage = loadImage("images/moon.png");
+  cloudImage = loadImage("images/cloud.png");
+  cloudImage2 = loadImage("images/cloud2.png");
   dragImage_1 = loadImage("images/constellation/dragImage_1.png");
   for (let i = 1; i <= 5; i++) {
     dragImage[i] = []; // 각 그룹 초기화
@@ -623,6 +632,7 @@ function preload() {
       }
     }
   }
+  backgroundMusic = loadSound("sound/background_music.mp3");
 }
 
 function setup() {
@@ -643,6 +653,11 @@ function setup() {
   angleMode(DEGREES);
   textFont(font);
   stars = stars_loc();
+
+  if (backgroundMusic) {
+    backgroundMusic.setLoop(true);
+    backgroundMusic.setVolume(0.5);
+  }
 }
 
 function draw() {
@@ -734,7 +749,27 @@ function description_3() {
   );
 }
 
+function startBackgroundMusic() {
+  if (backgroundMusic && !musicStarted) {
+    try {
+      userStartAudio()
+        .then(() => {
+          backgroundMusic.play();
+          musicStarted = true;
+          console.log("Background music started");
+        })
+        .catch((e) => {
+          console.log("Audio context error:", e);
+        });
+    } catch (e) {
+      console.log("Music play error:", e);
+    }
+  }
+}
+
 function keyPressed() {
+  startBackgroundMusic();
+
   // 메인 화면에서 Enter -> 인트로 시작
   if (keyCode === ENTER && mode === "main") {
     mode = "intro";
@@ -830,6 +865,8 @@ function drawShootingStars() {
 
 function backgroundStar() {
   background(0);
+
+  drawImageAspect(moonImage, width * 0.1, height * 0.2, 200, 200);
 
   if (back_stars.length === 0) initStars();
 
@@ -1088,7 +1125,6 @@ function intro_text() {
   } else if (textCount === 5) {
     renderConstellationSample();
   }
-  
 }
 
 function renderConstellationSample() {
@@ -1100,7 +1136,7 @@ function renderConstellationSample() {
   const maxX = width * 0.85;
   const minY = height * 0.1;
   const maxY = height * 0.55;
-  const starSize = rh(40);
+  const starSize = rh(55);
 
   if (!constellationSampleStarPositions) {
     constellationSampleStarPositions = [];
@@ -1347,7 +1383,6 @@ function renderStarInfo() {
 let inputBox;
 
 function question_1() {
-  
   interrupt();
   renderQuestionText(
     "2025년에 시간과 에너지를 가장 많이 투자한 일의 성과는 어떠했나요?"
@@ -1385,7 +1420,7 @@ function loading_1() {
         emotionResult = JSON.parse(result).emotion;
         emotionResults[0] = emotionResult;
         collectedEmotions.push(emotionResult);
-        totalEmotions[emotionResult] += 10;
+        totalEmotions[emotionResult] += 5;
         messageResult = JSON.parse(result).message;
         stars.forEach((s) => {
           s.image = baseStarImages[emotionResult];
@@ -1440,7 +1475,7 @@ function loading_2() {
       try {
         emotionResult = JSON.parse(result).emotion;
         emotionResults[1] = emotionResult;
-        totalEmotions[emotionResult] += 10;
+        totalEmotions[emotionResult] += 5;
         collectedEmotions.push(emotionResult);
         messageResult = JSON.parse(result).message;
       } catch (e) {
@@ -1531,7 +1566,7 @@ function loading_3() {
         intensityResult = JSON.parse(result).intensity;
         emotionResults[2] = emotionResult;
         collectedEmotions.push(emotionResult);
-        totalEmotions[emotionResult] += 10;
+        totalEmotions[emotionResult] += 5;
         messageResult = JSON.parse(result).message;
       } catch (e) {
         console.error("JSON parse error:", result);
@@ -1629,15 +1664,11 @@ function input_4() {
   emotionResult = null;
 }
 
-function loading_4(){
+function loading_4() {
   fill(255);
   textAlign(CENTER, CENTER);
   textSize(rh(MEDIUM_TEXT_SIZE));
-  text(
-    "당신의 소원에 따른 별자리를 찾는 중입니다...",
-    width / 2,
-    height * 0.5
-  );
+  text("당신의 소원에 따른 별자리를 찾는 중입니다...", width / 2, height * 0.5);
   // loadingUI("bottom");
   if (!hasCalledLLM) {
     hasCalledLLM = true;
@@ -1647,7 +1678,7 @@ function loading_4(){
         intensityResult = JSON.parse(result).intensity;
         emotionResults[3] = emotionResult;
         collectedEmotions.push(emotionResult);
-        totalEmotions[emotionResult] += 10;
+        totalEmotions[emotionResult] += 5;
         messageResult = JSON.parse(result).message;
       } catch (e) {
         console.error("JSON parse error:", result);
@@ -1664,7 +1695,7 @@ function loading_4(){
       3: 4,
       4: 5,
     };
-    
+
     drag_index = EMOTION_TO_DRAG_INDEX[emotionResults[3]] ?? 1;
 
     const normTargets = createStarsTargets(drag_index);
@@ -1708,10 +1739,10 @@ function createStarsTargets(drag_index) {
       //dragImage[1][1] 백조자리
       { rx: 0.161, ry: 0.302 },
       { rx: 0.386, ry: 0.399 },
-      { rx: 0.460, ry: 0.539 },
+      { rx: 0.46, ry: 0.539 },
       { rx: 0.297, ry: 0.703 },
       { rx: 0.136, ry: 0.771 },
-      { rx: 0.660, ry: 0.421 },
+      { rx: 0.66, ry: 0.421 },
       { rx: 0.774, ry: 0.185 },
       { rx: 0.613, ry: 0.731 },
       { rx: 0.744, ry: 0.904 },
@@ -1738,45 +1769,48 @@ function createStarsTargets(drag_index) {
       { rx: 0.567, ry: 0.686 },
       { rx: 0.498, ry: 0.801 },
       { rx: 0.762, ry: 0.488 },
-      { rx: 0.920, ry: 0.473 },
+      { rx: 0.92, ry: 0.473 },
     ],
     [
       //dragImage[4][1] 염소자리
       { rx: 0.115, ry: 0.377 },
-      { rx: 0.180, ry: 0.393 },
+      { rx: 0.18, ry: 0.393 },
       { rx: 0.317, ry: 0.384 },
       { rx: 0.458, ry: 0.389 },
       { rx: 0.839, ry: 0.241 },
       { rx: 0.815, ry: 0.321 },
       { rx: 0.613, ry: 0.663 },
-      { rx: 0.560, ry: 0.720 },
+      { rx: 0.56, ry: 0.72 },
       { rx: 0.293, ry: 0.577 },
     ],
     [
       //dragImage[5][1] 처녀자리
-      { rx: 0.060, ry: 0.447 },
+      { rx: 0.06, ry: 0.447 },
       { rx: 0.243, ry: 0.513 },
       { rx: 0.407, ry: 0.676 },
       { rx: 0.311, ry: 0.859 },
-      { rx: 0.508, ry: 0.400 },
+      { rx: 0.508, ry: 0.4 },
       { rx: 0.465, ry: 0.144 },
       { rx: 0.597, ry: 0.546 },
       { rx: 0.742, ry: 0.524 },
       { rx: 0.945, ry: 0.445 },
     ],
-  ]; 
+  ];
 
-  const starName = ["test", "백조자리", "북두칠성", "쌍둥이자리", "염소자리", "처녀자리"]
-  img_drag = dragImage[drag_index][1]
-  img_final = dragImage[drag_index][2]
-  img_name = starName[drag_index]
-
+  const starName = [
+    "test",
+    "백조자리",
+    "북두칠성",
+    "쌍둥이자리",
+    "염소자리",
+    "처녀자리",
+  ];
+  img_drag = dragImage[drag_index][1];
+  img_final = dragImage[drag_index][2];
+  img_name = starName[drag_index];
 
   return targets[drag_index];
 }
-
-
-
 
 function getTargetScreenPos(target) {
   let originalW = img_drag.width;
@@ -1795,14 +1829,19 @@ function getTargetScreenPos(target) {
 }
 
 function mousePressed() {
-  if (homeBtn){
-      if (mouseX >= homeBtn.x && mouseX <= homeBtn.x + homeBtn.w &&
-          mouseY >= homeBtn.y && mouseY <= homeBtn.y + homeBtn.h) {
-            hardResetToMain();
-            return;
+  startBackgroundMusic();
+
+  if (homeBtn) {
+    if (
+      mouseX >= homeBtn.x &&
+      mouseX <= homeBtn.x + homeBtn.w &&
+      mouseY >= homeBtn.y &&
+      mouseY <= homeBtn.y + homeBtn.h
+    ) {
+      hardResetToMain();
+      return;
     }
   }
-  
 
   if (mode === "drag_stars") {
     for (let i = 0; i < stars.length; i++) {
@@ -1838,8 +1877,6 @@ function mousePressed() {
       hardResetToMain();
     }
   }
-
-
 }
 
 function snapIfStarClose() {
@@ -1954,13 +1991,13 @@ function drag_stars() {
 
   fill(255);
   textSize(SMALL_TEXT_SIZE);
-  text(`당신의 별자리는 ${img_name}입니다`, width/2, height*0.1);
+  text(`당신의 별자리는 ${img_name}입니다`, width / 2, height * 0.1);
 
   if (checkStarsComplete() && !transitioning) {
     transitioning = true;
     goToLastMode();
   }
-} 
+}
 
 let lastEnteredAt = 0; //last 모드 진입 시각
 
@@ -2090,15 +2127,15 @@ function resizeImage(img, scaleW, centerY) {
   const cy = centerY;
 
   const left = cx - scaledW / 2;
-  const top  = cy - scaledH / 2;
+  const top = cy - scaledH / 2;
 
   return { cx, cy, scaledW, scaledH, left, top };
 }
 
-function draw_finalStars(){
+function draw_finalStars() {
   if (!img_drag || !img_final) return;
 
-  const dragRect  = resizeImage(img_drag, 0.5, height / 2);
+  const dragRect = resizeImage(img_drag, 0.5, height / 2);
   const finalRect = resizeImage(img_final, 0.4, height * 0.4);
 
   for (let i = 0; i < revealedStars; i++) {
@@ -2106,10 +2143,10 @@ function draw_finalStars(){
     if (!s || !s.image) continue;
 
     const rx = (s.x - dragRect.left) / dragRect.scaledW;
-    const ry = (s.y - dragRect.top)  / dragRect.scaledH;
+    const ry = (s.y - dragRect.top) / dragRect.scaledH;
 
     const x = finalRect.left + rx * finalRect.scaledW;
-    const y = finalRect.top  + ry * finalRect.scaledH;
+    const y = finalRect.top + ry * finalRect.scaledH;
 
     if (s.popProgress < 1) {
       s.popProgress = min(1, s.popProgress + 0.08);
@@ -2287,65 +2324,94 @@ function renderSavedStars() {
 }
 
 function radar_chart() {
-  //레이더 차트
-  stroke(200);
-  strokeWeight(1);
-  let x = width * 0.12;
-  let y = height * 0.8;
+  push();
 
-  for (let i = 0; i < 6; i++) {
-    let r1 = 100;
-    let r2 = 20;
+  drawingContext.shadowBlur = 10;
+  drawingContext.shadowColor = "rgba(253,190,2,0.6)";
 
-    let dx = r1 * cos(i * 72 - 90);
-    let dy = r1 * sin(i * 72 - 90);
+  textSize(rh(28));
+  fill(255);
+  textAlign(CENTER, CENTER);
+  text(
+    "모두의 감정이 모여,\n이곳에 하나의 별로 남았습니다.",
+    width * 0.12,
+    height * 0.57
+  );
 
-    line(x, y, x + dx, y + dy);
+  translate(width * 0.12, height * 0.8);
+  angleMode(DEGREES);
 
-    for (let j = 0; j < 5; j++) {
-      let dxax = r2 * cos(i * 72 - 90);
-      let dyax = r2 * sin(i * 72 - 90);
+  const axisCount = 5;
 
-      let nextdxax = r2 * cos((i + 1) * 72 - 90);
-      let nextdyax = r2 * sin((i + 1) * 72 - 90);
+  const baseSize = min(width, height);
+  const maxR = baseSize * 0.12;
+  const step = maxR / 5;
 
-      line(x + dxax, y + dyax, x + nextdxax, y + nextdyax);
-
-      r2 = r2 + 20;
+  strokeWeight(maxR * 0.01);
+  for (let r = step; r <= maxR; r += step) {
+    stroke(180, map(r, step, maxR, 40, 120));
+    noFill();
+    beginShape();
+    for (let i = 0; i < axisCount; i++) {
+      let a = i * 72 - 90;
+      vertex(r * cos(a), r * sin(a));
     }
+    endShape(CLOSE);
   }
 
-  let dx1 = currentEmotions[0] * cos(72 - 90);
-  let dy1 = currentEmotions[0] * sin(72 - 90);
+  stroke(160, 160, 190, 140);
+  strokeWeight(maxR * 0.008);
 
-  let dx2 = currentEmotions[1] * cos(2 * 72 - 90);
-  let dy2 = currentEmotions[1] * sin(2 * 72 - 90);
+  for (let i = 0; i < axisCount; i++) {
+    let a = i * 72 - 90;
+    line(0, 0, maxR * cos(a), maxR * sin(a));
 
-  let dx3 = currentEmotions[2] * cos(3 * 72 - 90);
-  let dy3 = currentEmotions[2] * sin(3 * 72 - 90);
-
-  let dx4 = currentEmotions[3] * cos(4 * 72 - 90);
-  let dy4 = currentEmotions[3] * sin(4 * 72 - 90);
-
-  let dx5 = currentEmotions[4] * cos(5 * 72 - 90);
-  let dy5 = currentEmotions[4] * sin(5 * 72 - 90);
+    noStroke();
+    fill(200);
+    circle(maxR * cos(a), maxR * sin(a), maxR * 0.04);
+  }
 
   noStroke();
-  fill("#FDBE02");
+  fill(253, 190, 2, 90);
   beginShape();
-  vertex(x + dx1, y + dy1);
-  vertex(x + dx2, y + dy2);
-  vertex(x + dx3, y + dy3);
-  vertex(x + dx4, y + dy4);
-  vertex(x + dx5, y + dy5);
-  vertex(x + dx1, y + dy1);
-  endShape();
+  for (let i = 0; i < axisCount; i++) {
+    let a = (i + 1) * 72 - 90;
 
-  text("Calm", x + 100, y - 30);
-  text("Sadness", x + 50, y + 100);
-  text("Hope", x - 80, y + 100);
-  text("Fear", x - 130, y - 30);
-  text("Happiness", x - 15, y - 107);
+    let value = constrain(currentEmotions[i], 0, 100);
+    let r = value * (maxR / 100);
+
+    vertex(r * cos(a), r * sin(a));
+  }
+  endShape(CLOSE);
+
+  stroke(253, 190, 2, 180);
+  strokeWeight(maxR * 0.015);
+  noFill();
+  beginShape();
+  for (let i = 0; i < axisCount; i++) {
+    let a = (i + 1) * 72 - 90;
+
+    let value = constrain(currentEmotions[i], 0, 100);
+    let r = value * (maxR / 100);
+
+    vertex(r * cos(a), r * sin(a));
+  }
+  endShape(CLOSE);
+
+  textAlign(CENTER, CENTER);
+  textSize(rh(SMALL_TEXT_SIZE));
+  fill(220);
+
+  const labels = ["차분함", "슬픔", "희망", "걱정", "행복"];
+
+  const labelOffset = maxR * 1.25;
+
+  for (let i = 0; i < axisCount; i++) {
+    let a = (i + 1) * 72 - 90;
+    text(labels[i], labelOffset * cos(a), labelOffset * sin(a));
+  }
+
+  pop();
 }
 
 function reset() {
@@ -2371,7 +2437,7 @@ function reset() {
   }
 }
 
-function interrupt(){
+function interrupt() {
   push();
   textAlign(RIGHT, TOP);
   fill(255);
@@ -2389,7 +2455,7 @@ function interrupt(){
     x: x - textWidth(label),
     y: y,
     w: textWidth(label),
-    h: textAscent() + textDescent()
+    h: textAscent() + textDescent(),
   };
 
   pop();
@@ -2403,6 +2469,11 @@ function hardResetToMain() {
   userInput = "";
   userInputs = [];
   back_stars = [];
+
+  if (inputBox) {
+    inputBox.remove();
+    inputBox = null;
+  }
 
   loadingProgress = 0;
   loadingStartTime = 0;
