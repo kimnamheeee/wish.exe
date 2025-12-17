@@ -1024,7 +1024,7 @@ function renderLoadingText(textString, highlightTexts = []) {
 
       for (let segment of segments) {
         if (segment.highlight) {
-          fill(255, 200, 0);
+          fill("#E6D3B1");
           textStyle(BOLD);
         } else {
           fill(0);
