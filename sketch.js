@@ -27,9 +27,13 @@ let transitioning = false;
 
 let stars = []; //starsLoc
 
+let drag_index;
 let draggedStarIndex = -1;
 let targetPositions = [];
 const SNAP_THRESHOLD = 30;
+
+let img_drag;
+let img_final;
 
 let intensityResult = null;
 let isRadarAnimating = false;
@@ -54,6 +58,7 @@ let qrcodeSkeletonElement;
 let uploadRequestId = 0;
 
 let resetButtonImg = null;
+let homeBtn = null;
 
 let lastModeTransitionToken = 0;
 let loadingLastScheduled = false;
@@ -523,7 +528,7 @@ function renderAnswerInput() {
 }
 
 function stars_loc() {
-  const STAR_COUNT = 11;
+  const STAR_COUNT = 9;
 
   const minY = height * 0.1;
   const maxY = height * 0.55;
@@ -678,6 +683,9 @@ function draw() {
       break;
     case "question_4":
       question_4();
+      break;
+    case "loading_4":
+      loading_4();
       break;
     case "drag_stars":
       drag_stars();
@@ -1022,6 +1030,7 @@ function renderLoadingText(textString, highlightTexts = []) {
 // 인트로
 
 function intro() {
+  interrupt();
   introFrame++;
 
   // 0~120프레임 동안 페이드아웃
@@ -1336,6 +1345,8 @@ function renderStarInfo() {
 let inputBox;
 
 function question_1() {
+  
+  interrupt();
   renderQuestionText(
     "2025년에 시간과 에너지를 가장 많이 투자한 일의 성과는 어떠했나요?"
   );
@@ -1398,6 +1409,7 @@ function loading_1() {
 //질문 2
 
 function question_2() {
+  interrupt();
   renderMainStars();
   renderQuestionText("2025년에 가장 많이 했던 생각은 무엇인가요?");
   renderAnswerInput();
@@ -1483,6 +1495,7 @@ function about_stars() {
 //질문 3
 
 function question_3() {
+  interrupt();
   renderMainStars();
   renderQuestionText(
     "지나간 2025년의 하루로 돌아갈 수 있다면,\n그날의 자신에게 어떤 말을 해주고 싶나요?"
@@ -1592,6 +1605,7 @@ function stars_myth() {
 //질문 4(소원)
 
 function question_4() {
+  interrupt();
   renderMainStars();
   renderQuestionText(
     "2025년의 나날을 기억하며, 다가오는 2026년에 이루고 싶은 소망은 무엇인가요?"
@@ -1608,26 +1622,67 @@ function input_4() {
   showInputWarning = false;
   getUserInput();
   userInputs.push(userInput); // 네 번째 답변(소원) 저장
-  mode = "drag_stars";
+  mode = "loading_4";
   hasCalledLLM = false;
   emotionResult = null;
+}
 
-  const normTargets = createStarsTargets(drag_index);
-  targetPositions = normTargets.map((t) => {
-    const pos = getTargetScreenPos(t);
-    return {
-      ...pos,
-      occupied: false,
+function loading_4(){
+  fill(255);
+  textAlign(CENTER, CENTER);
+  textSize(rh(MEDIUM_TEXT_SIZE));
+  text(
+    "당신의 소원에 따른 별자리를 찾는 중입니다",
+    width / 2,
+    height * 0.4
+  );
+  // loadingUI("bottom");
+  if (!hasCalledLLM) {
+    hasCalledLLM = true;
+    callLLM(LUM_SYSTEM_PROMPT, userInput).then(async (result) => {
+      try {
+        emotionResult = JSON.parse(result).emotion;
+        intensityResult = JSON.parse(result).intensity;
+        emotionResults[3] = emotionResult;
+        collectedEmotions.push(emotionResult);
+        totalEmotions[emotionResult] += 10;
+        messageResult = JSON.parse(result).message;
+      } catch (e) {
+        console.error("JSON parse error:", result);
+      }
+      isCallingLLM = false;
+    });
+  }
+
+  if (emotionResults[3] !== null) {
+    const EMOTION_TO_DRAG_INDEX = {
+      0: 1,
+      1: 2,
+      2: 3,
+      3: 4,
+      4: 5,
     };
-  });
-  for (let s of stars) {
-    s.locked = false;
-    s.lockedTargetIndex = null;
-    s.dragged = false;
+    
+    drag_index = EMOTION_TO_DRAG_INDEX[emotionResults[3]] ?? 1;
+
+    const normTargets = createStarsTargets(drag_index);
+    targetPositions = normTargets.map((t) => {
+      const pos = getTargetScreenPos(t);
+      return {
+        ...pos,
+        occupied: false,
+      };
+    });
+    for (let s of stars) {
+      s.locked = false;
+      s.lockedTargetIndex = null;
+      s.dragged = false;
+    }
+
+    mode = "drag_stars";
   }
 }
 
-let drag_index = 0;
 // 질문1에서 생성되는 별자리 및 별 개수의 인덱스와 동일
 // 프로토타입용으로 현재 0으로 임의로 설정
 
@@ -1648,70 +1703,79 @@ function createStarsTargets(drag_index) {
       { rx: 0.061, ry: 0.894 },
     ],
     [
-      //dragImage[1][1]
-      { rx: 0.388, ry: 0.393 },
-      { rx: 0.774, ry: 0.186 },
-      { rx: 0.662, ry: 0.418 },
-      { rx: 0.461, ry: 0.541 },
-      { rx: 0.298, ry: 0.693 },
-      { rx: 0.133, ry: 0.765 },
-      { rx: 0.615, ry: 0.728 },
-      { rx: 0.747, ry: 0.893 },
+      //dragImage[1][1] 백조자리
+      { rx: 0.161, ry: 0.302 },
+      { rx: 0.386, ry: 0.399 },
+      { rx: 0.460, ry: 0.539 },
+      { rx: 0.297, ry: 0.703 },
+      { rx: 0.136, ry: 0.771 },
+      { rx: 0.660, ry: 0.421 },
+      { rx: 0.774, ry: 0.185 },
+      { rx: 0.613, ry: 0.731 },
+      { rx: 0.744, ry: 0.904 },
     ],
     [
-      //dragImage[2][1]
-      { rx: 0.57, ry: 0.457 },
-      { rx: 0.604, ry: 0.796 },
-      { rx: 0.859, ry: 0.868 },
-      { rx: 0.912, ry: 0.493 },
-      { rx: 0.434, ry: 0.295 },
-      { rx: 0.283, ry: 0.123 },
-      { rx: 0.081, ry: 0.177 },
+      //dragImage[2][1] 북두칠성
+      { rx: 0.081, ry: 0.168 },
+      { rx: 0.286, ry: 0.137 },
+      { rx: 0.437, ry: 0.295 },
+      { rx: 0.564, ry: 0.459 },
+      { rx: 0.606, ry: 0.791 },
+      { rx: 0.854, ry: 0.863 },
+      { rx: 0.912, ry: 0.502 },
+      { rx: 0.755, ry: 0.245 },
+      { rx: 0.205, ry: 0.561 },
     ],
     [
-      //dragImage[3][1]
-      { rx: 0.402, ry: 0.194 },
-      { rx: 0.252, ry: 0.295 },
-      { rx: 0.38, ry: 0.526 },
-      { rx: 0.458, ry: 0.586 },
-      { rx: 0.566, ry: 0.691 },
-      { rx: 0.502, ry: 0.802 },
-      { rx: 0.615, ry: 0.386 },
-      { rx: 0.764, ry: 0.492 },
-      { rx: 0.92, ry: 0.473 },
+      //dragImage[3][1] 쌍둥이자리
+      { rx: 0.252, ry: 0.296 },
+      { rx: 0.403, ry: 0.194 },
+      { rx: 0.619, ry: 0.385 },
+      { rx: 0.382, ry: 0.522 },
+      { rx: 0.463, ry: 0.588 },
+      { rx: 0.567, ry: 0.686 },
+      { rx: 0.498, ry: 0.801 },
+      { rx: 0.762, ry: 0.488 },
+      { rx: 0.920, ry: 0.473 },
     ],
     [
-      //dragImage[4][1]
-      { rx: 0.833, ry: 0.239 },
-      { rx: 0.812, ry: 0.321 },
-      { rx: 0.456, ry: 0.393 },
-      { rx: 0.315, ry: 0.379 },
-      { rx: 0.18, ry: 0.393 },
-      { rx: 0.109, ry: 0.372 },
-      { rx: 0.292, ry: 0.577 },
-      { rx: 0.558, ry: 0.717 },
-      { rx: 0.608, ry: 0.661 },
+      //dragImage[4][1] 염소자리
+      { rx: 0.115, ry: 0.377 },
+      { rx: 0.180, ry: 0.393 },
+      { rx: 0.317, ry: 0.384 },
+      { rx: 0.458, ry: 0.389 },
+      { rx: 0.839, ry: 0.241 },
+      { rx: 0.815, ry: 0.321 },
+      { rx: 0.613, ry: 0.663 },
+      { rx: 0.560, ry: 0.720 },
+      { rx: 0.293, ry: 0.577 },
     ],
     [
-      //dragImage[5][1]
-      { rx: 0.463, ry: 0.141 },
-      { rx: 0.505, ry: 0.393 },
-      { rx: 0.595, ry: 0.545 },
-      { rx: 0.737, ry: 0.524 },
-      { rx: 0.95, ry: 0.44 },
-      { rx: 0.248, ry: 0.514 },
-      { rx: 0.409, ry: 0.67 },
-      { rx: 0.315, ry: 0.864 },
-      { rx: 0.065, ry: 0.455 },
+      //dragImage[5][1] 처녀자리
+      { rx: 0.060, ry: 0.447 },
+      { rx: 0.243, ry: 0.513 },
+      { rx: 0.407, ry: 0.676 },
+      { rx: 0.311, ry: 0.859 },
+      { rx: 0.508, ry: 0.400 },
+      { rx: 0.465, ry: 0.144 },
+      { rx: 0.597, ry: 0.546 },
+      { rx: 0.742, ry: 0.524 },
+      { rx: 0.945, ry: 0.445 },
     ],
   ];
+  img_drag = dragImage[drag_index][1]
+  img_final = dragImage[drag_index][2]
+
 
   return targets[drag_index];
 }
 
+
+
+
 function getTargetScreenPos(target) {
-  let originalW = dragImage_1.width;
-  let originalH = dragImage_1.height;
+  let originalW = img_drag.width;
+  let originalH = img_drag.height;
 
   let scaledW = width * 0.7;
   let scaledH = originalH * (scaledW / originalW);
@@ -1758,6 +1822,12 @@ function mousePressed() {
       mouseY < btnY + btnH / 2
     ) {
       hardResetToMain();
+    }
+  } else if (homeBtn){
+      if (mouseX >= homeBtn.x && mouseX <= homeBtn.x + homeBtn.w &&
+          mouseY >= homeBtn.y && mouseY <= homeBtn.y + homeBtn.h) {
+            hardResetToMain();
+            return;
     }
   }
 }
@@ -1836,9 +1906,9 @@ function checkStarsComplete() {
 }
 
 function draw_dragImage() {
-  if (dragImage_1 && dragImage_1.width > 0) {
-    const originalW = dragImage_1.width;
-    const originalH = dragImage_1.height;
+  if (img_drag && img_drag.width > 0) {
+    const originalW = img_drag.width;
+    const originalH = img_drag.height;
 
     const scaledW = width * 0.7;
     const scaledH = originalH * (scaledW / originalW);
@@ -1846,7 +1916,7 @@ function draw_dragImage() {
     const cx = width / 2;
     const cy = height / 2;
 
-    image(dragImage_1, cx, cy, scaledW, scaledH);
+    image(img_drag, cx, cy, scaledW, scaledH);
   } else {
     fill(255);
     textAlign(CENTER, CENTER);
@@ -1866,6 +1936,7 @@ function getDragImageXBounds() {
 }
 
 function drag_stars() {
+  interrupt();
   draw_dragImage();
   renderMainStars();
   renderStarsTargets();
@@ -1974,10 +2045,30 @@ async function goToLastMode_2() {
   loadingLasttime = millis();
 }
 
+function draw_finalImage() {
+  if (img_final && img_final.width > 0) {
+    const originalW = img_final.width;
+    const originalH = img_final.height;
+
+    const scaledW = width * 0.7;
+    const scaledH = originalH * (scaledW / originalW);
+
+    const cx = width / 2;
+    const cy = height / 2;
+
+    image(img_final, cx, cy, scaledW, scaledH);
+  } else {
+    fill(255);
+    textAlign(CENTER, CENTER);
+    textSize(rh(MEDIUM_TEXT_SIZE));
+    text("이미지를 불러오는 중입니다...", width / 2, height / 2);
+  }
+}
+
 function last() {
   //최종화면
   backgroundStar();
-  draw_dragImage();
+  draw_finalImage();
   renderMainStars();
   push();
 
@@ -2058,9 +2149,9 @@ function updateRadarValues() {
 function drawForCapture(layer) {
   layer.clear();
 
-  if (dragImage_1 && dragImage_1.width > 0) {
-    const originalW = dragImage_1.width;
-    const originalH = dragImage_1.height;
+  if (img_final && img_final.width > 0) {
+    const originalW = img_final.width;
+    const originalH = img_final.height;
 
     const scaledW = width * 0.7;
     const scaledH = originalH * (scaledW / originalW);
@@ -2068,7 +2159,7 @@ function drawForCapture(layer) {
     const cx = width / 2;
     const cy = height / 2;
 
-    layer.image(dragImage_1, cx, cy, scaledW, scaledH);
+    layer.image(img_final, cx, cy, scaledW, scaledH);
   }
 
   for (let s of stars) {
@@ -2222,10 +2313,29 @@ function reset() {
   }
 }
 
-// function interrupt(){
-//   text("처음으로", width*0.1, height*0.1)
-//   hardResetToMain();
-// }
+function interrupt(){
+  push();
+  textAlign(LEFT, TOP);
+  fill(255);
+  noStroke();
+
+  const x = rw(24);
+  const y = rh(18);
+  const fontSize = max(14, rh(22));
+
+  textSize(fontSize);
+  const label = "처음으로";
+  text(label, x, y);
+
+  // 클릭 판정용 박스 저장
+  homeBtn = {
+    x, y,
+    w: textWidth(label),
+    h: textAscent() + textDescent()
+  };
+
+  pop();
+}
 
 function hardResetToMain() {
   clearTimeout(timer);
