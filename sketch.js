@@ -1,4 +1,5 @@
 let userInput = "";
+let userInputs = []; // 모든 질문에 대한 답변 저장
 let back_stars = [];
 
 let loadingProgress = 0;
@@ -7,6 +8,8 @@ let loadingDuration = 5000;
 
 let isCallingLLM = false;
 let emotionResult = null;
+let messageResult = null;
+let constellationSampleResult = null;
 
 const emotionResults = new Array(5).fill(null);
 
@@ -51,6 +54,12 @@ let qrcodeSkeletonElement;
 let uploadRequestId = 0;
 
 let resetButtonImg = null;
+
+let lastModeTransitionToken = 0;
+let loadingLastScheduled = false;
+
+let constellationSampleStarPositions = null;
+let constellationSampleStartTime = null;
 
 const LARGE_TEXT_SIZE = 52;
 const MEDIUM_TEXT_SIZE = 40;
@@ -140,9 +149,14 @@ const LLM_API_URL = "https://p5-llm-server.vercel.app/api/llm";
 const UPLOAD_API_URL = "https://p5-llm-server.vercel.app/api/upload";
 
 const SYSTEM_PROMPT = `
-You are an emotion classifier for an art installation.
-Your ONLY job is to read the user's input text and classify it
-into a SINGLE emotion ID from 0 to 4.
+You are an emotion classifier and empathetic message generator
+for an interactive art installation.
+
+Your job is to:
+1) Read the user's input text
+2) Classify it into a SINGLE emotion ID from 0 to 4
+3) Generate a short empathetic message that subtly reflects
+   WHY the text was mapped to that emotion
 
 EMOTION MAPPING (fixed):
 0 = Calm / Neutral
@@ -151,42 +165,86 @@ EMOTION MAPPING (fixed):
 3 = Fear / Anxiety
 4 = Happiness / Excitement
 
+OUTPUT FORMAT (STRICT):
+You MUST return an object with this exact shape:
+{
+  "emotion": <number>,
+  "message": "<string>"
+}
+
 RULES:
-- ALWAYS return an object with this exact shape:
-  {"emotion": <number>}
-- <number> must be a single integer from 0 to 4.
-- DO NOT include explanations, adjectives, reasoning, or additional text.
-- DO NOT output anything except valid JSON.
+- "emotion" must be a single integer from 0 to 4.
+- "message" must be written in natural Korean.
+- "message" must:
+  - Clearly reflect a key phrase, situation, or emotional cue
+    from the user's input (paraphrased, not quoted)
+  - Make it understandable WHY this emotion was selected,
+    without explicitly explaining or labeling it
+  - Include gentle empathy and a short supportive or hopeful wish
+  - Be 1–2 sentences long
+- Do NOT explain the classification process.
+- Do NOT mention emotion names or IDs.
+- Do NOT include emojis.
+- Do NOT output anything except valid JSON.
+- No markdown, no backticks, no extra text.
 
-If the user input is unclear, ambiguous, or overly complex,
-still select the closest emotion ID.
+MESSAGE DESIGN GUIDELINE:
+The message should feel like:
+"I read what you said, and this part stood out to me."
+
+Examples of reflection:
+- If the user mentions enduring, holding on, or not giving up →
+  reflect perseverance.
+- If the user mentions confusion, uncertainty, or shaking feelings →
+  reflect instability or unease.
+- If the user mentions joy, excitement, or good events →
+  reflect positive momentum.
+- If the user is emotionally flat or descriptive →
+  reflect steadiness or quietness.
+
+If the user input is unclear or ambiguous,
+still choose the closest emotion and generate a message
+that plausibly reflects the input.
 Never ask for clarification.
-Never output any natural language.
 
-Your final answer MUST be valid JSON and nothing else.
-No markdown.
-No backticks.
-No comments.
-No text before or after the JSON.
+EXAMPLES:
 
-Examples:
 User: "올해 너무 힘들었는데 그래도 버텼어요."
-Return: {"emotion": 2}
+Return:
+{"emotion":2,"message":"많이 힘들었지만 포기하지 않고 버텨왔다는 마음이 전해져요. 그 시간을 지나온 만큼 앞으로의 걸음도 분명 의미 있게 이어지길 바라요."}
 
 User: "혼란스럽고 뭐가 맞는지 모르겠어요."
-Return: {"emotion": 3}
+Return:
+{"emotion":3,"message":"무엇을 믿어야 할지 헷갈리는 상태에 오래 머물러 계신 것 같아요. 이 불안한 감정도 천천히 가라앉고 방향이 잡히길 바라요."}
 
 User: "그냥 담담한 하루였어요."
-Return: {"emotion": 0}
+Return:
+{"emotion":0,"message":"특별한 사건 없이 조용히 흘러간 하루였던 것 같아요. 이런 잔잔한 흐름이 마음을 편안하게 해주길 바라요."}
+
+User: "오늘 너무 신나고 행복했어요!"
+Return:
+{"emotion":4,"message":"기분이 들뜰 만큼 좋은 일이 있었던 하루였군요. 이 밝은 기운이 앞으로도 계속 이어지길 바라요."}
 `;
 
 const LUM_SYSTEM_PROMPT = `
-You are an emotion classifier for an art installation.
-Your ONLY job is to read the user's input text and classify it
-into (1) a SINGLE emotion ID, and (2) an intensity level.
+You are an emotion classifier and reflective message generator
+for an interactive art installation.
 
-OUTPUT SCHEMA (strict):
-{"emotion": <number>, "intensity": <number>}
+Your job is to:
+1) Read the user's input text
+2) Classify it into:
+   - a SINGLE emotion ID (0–4)
+   - a SINGLE intensity level (0–4)
+3) Generate a short message that reflects:
+   - why this emotion was selected
+   - why this intensity level feels appropriate
+
+OUTPUT SCHEMA (STRICT):
+{
+  "emotion": <number>,
+  "intensity": <number>,
+  "message": "<string>"
+}
 
 EMOTION MAPPING (fixed):
 0 = Calm / Neutral
@@ -198,33 +256,72 @@ EMOTION MAPPING (fixed):
 INTENSITY SCALE:
 0 = Weak / Subtle
 1 = Moderate
-2 = Strong / Intense
-3 = Very Strong / Very Intense
-4 = Extreme / Maximum
+2 = Strong
+3 = Very Strong
+4 = Extreme
 
 RULES:
-- ALWAYS return a JSON object with BOTH keys:
-  "emotion" and "intensity".
-- <emotion> must be a single integer from 0 to 4.
-- <intensity> must be a single integer from 0 to 4.
-- DO NOT include explanations, adjectives, reasoning, or extra text.
-- DO NOT output anything except valid JSON.
-- DO NOT use markdown, backticks, or comments.
+- ALWAYS return a JSON object with ALL THREE keys:
+  "emotion", "intensity", "message".
+- "emotion" must be an integer from 0 to 4.
+- "intensity" must be an integer from 0 to 4.
+- "message" must be written in natural Korean.
+- DO NOT mention emotion names, intensity numbers, or labels.
+- DO NOT explain in a technical or analytical way.
+- DO NOT include emojis, markdown, comments, or extra text.
+- Output ONLY valid JSON.
 
-If the user input is unclear, ambiguous, or overly complex,
-still select the closest emotion AND estimate intensity.
+MESSAGE REQUIREMENTS:
+- The message must subtly reflect:
+  1) Which part of the user's expression stood out emotionally
+  2) How strong or overwhelming that feeling seems
+- Intensity should be inferred through:
+  - repetition, exaggeration, or strong wording
+  - emotional weight or heaviness
+  - urgency, extremeness, or lingering duration
+- The message should make it feel obvious
+  WHY the intensity is low or high, without saying so explicitly.
+- Include gentle empathy and a short supportive or grounding remark.
+- Length: 1–2 sentences.
+
+INTENSITY GUIDANCE (implicit, NOT to be stated):
+- Intensity 0:
+  Light, observational, emotionally distant or flat expression
+- Intensity 1:
+  Noticeable emotion, but controlled or understated
+- Intensity 2:
+  Clearly felt emotion, emotionally present
+- Intensity 3:
+  Emotion feels heavy, pressing, or hard to ignore
+- Intensity 4:
+  Emotion feels overwhelming, consuming, or extreme
+
+If the user input is unclear or ambiguous,
+still choose the closest emotion and intensity
+and generate a plausible reflective message.
 Never ask for clarification.
-Never output natural language.
 
-Examples:
+EXAMPLES:
+
 User: "올해 너무 힘들었는데 그래도 버텼어요."
-Return: {"emotion": 2, "intensity": 1}
+Return:
+{"emotion":2,"intensity":1,"message":"힘든 시간을 겪으면서도 스스로를 붙잡고 계속 버텨왔다는 마음이 느껴져요. 그 조용한 의지가 앞으로도 당신을 지탱해 주길 바라요."}
 
 User: "혼란스럽고 뭐가 맞는지 모르겠어요."
-Return: {"emotion": 3, "intensity": 2}
+Return:
+{"emotion":3,"intensity":2,"message":"무엇을 믿어야 할지 몰라 마음이 계속 흔들리고 있는 것 같아요. 이 복잡한 감정도 조금씩 가라앉으며 숨 돌릴 틈이 생기길 바라요."}
 
-User: "그냥 담담한 하루였어요."
-Return: {"emotion": 0, "intensity": 0}
+User: "아무것도 하기 싫고 계속 가라앉는 느낌이에요."
+Return:
+{"emotion":1,"intensity":3,"message":"의욕이 사라진 채로 마음이 깊이 가라앉아 있는 시간이 길어 보였어요. 이 무거운 감정 속에서도 스스로를 너무 몰아붙이지 않길 바라요."}
+
+User: "오늘은 진짜 최고였고 너무 행복해서 잠이 안 와요!"
+Return:
+{"emotion":4,"intensity":4,"message":"기쁨이 가득 차서 쉽게 가라앉지 않을 만큼 좋은 하루였던 것 같아요. 이 설렘이 오래도록 마음에 남아 있길 바라요."}
+
+User: "그냥 평범한 하루였어요."
+Return:
+{"emotion":0,"intensity":0,"message":"특별한 감정의 흔들림 없이 조용히 흘러간 하루처럼 느껴져요. 이런 잔잔함이 당신에게 편안함으로 남길 바라요."}
 `;
 
 async function callLLM(systemPrompt, userText) {
@@ -244,7 +341,7 @@ async function callLLM(systemPrompt, userText) {
     }),
   });
 
-  await delay(10000);
+  // await delay(10000);
 
   const data = await res.json();
   const reply = data.choices?.[0]?.message?.content ?? "(no reply)";
@@ -266,23 +363,39 @@ const loadingMessages = [
   "마음이 향했던 순간들을 가만히 정리하는 중입니다",
 ];
 
-function loadingUI() {
+function loadingUI(position = "top") {
   fill(255);
   textAlign(CENTER, CENTER);
 
-  if (millis() - lastTextChange > 3000) {
-    loadingTextIndex = floor(random(0, loadingMessages.length));
-    lastTextChange = millis();
+  if (position === "top") {
+    if (millis() - lastTextChange > 3000) {
+      loadingTextIndex = floor(random(0, loadingMessages.length));
+      lastTextChange = millis();
+    }
+
+    textSize(rh(MEDIUM_TEXT_SIZE));
+    text(loadingMessages[loadingTextIndex], width / 2, height * 0.3);
+
+    let dots = floor((millis() / 400) % 4);
+    let dotString = ".".repeat(dots);
+
+    textSize(rh(MEDIUM_TEXT_SIZE));
+    text(dotString, width / 2, height * 0.38);
+  } else if (position === "bottom") {
+    if (millis() - lastTextChange > 3000) {
+      loadingTextIndex = floor(random(0, loadingMessages.length));
+      lastTextChange = millis();
+    }
+
+    textSize(rh(SMALL_TEXT_SIZE));
+    text(loadingMessages[loadingTextIndex], width / 2, height * 0.05);
+
+    let dots = floor((millis() / 400) % 4);
+    let dotString = ".".repeat(dots);
+
+    textSize(rh(MEDIUM_TEXT_SIZE));
+    text(dotString, width / 2, height * 0.6);
   }
-
-  textSize(rh(MEDIUM_TEXT_SIZE));
-  text(loadingMessages[loadingTextIndex], width / 2, height * 0.3);
-
-  let dots = floor((millis() / 400) % 4);
-  let dotString = ".".repeat(dots);
-
-  textSize(rh(MEDIUM_TEXT_SIZE));
-  text(dotString, width / 2, height * 0.38);
 }
 
 let revealedStars = 0;
@@ -333,8 +446,8 @@ function renderMainStars() {
       s.image,
       s.x,
       s.y,
-      30 * scale * sizeScale,
-      30 * scale * sizeScale
+      rh(40 * scale * sizeScale),
+      rh(40 * scale * sizeScale)
     );
   }
 }
@@ -402,7 +515,7 @@ function renderAnswerInput() {
     inputBox.style("outline", "none");
     inputBox.style("border", "none");
     inputBox.style("font-family", "pokemon");
-    inputBox.attribute("placeholder", "여기에 입력하세요...");
+    inputBox.attribute("placeholder", "여기에 입력하세요... (입력 후 Enter)");
     inputBox.attribute("required", "true");
   }
 
@@ -485,6 +598,7 @@ function preload() {
   font = loadFont("fonts/pokemon.ttf");
   dialogImage = loadImage("images/dialog.png");
   inputImage = loadImage("images/input.png");
+  constellationSampleResult = loadImage("images/sample_constellation.png");
   resetButtonImg = loadImage("images/reset.png");
   for (let i = 0; i < 5; i++) {
     baseStarImages[i] = loadImage(`images/stars/${i}/star.png`);
@@ -578,9 +692,12 @@ function draw() {
 }
 
 function description_1() {
+  const emotionText = emotionMapping[emotionResult];
   renderLoadingText(
-    `감정에 따라 탄생하는 별의 모양이 달라져요.\n2025년 가장 많은 노력을 들인 일은[${emotionMapping[emotionResult]}]과 연결되어 있네요.
-    당신의 [${emotionMapping[emotionResult]}]을 [${shapeMapping[emotionResult]}] 별에 담아볼게요.`
+    `${messageResult}
+    감정에 따라 탄생하는 별의 모양이 달라져요.\n2025년 가장 많은 노력을 들인 일은[${emotionText}]과 연결되어 있네요.
+    당신의 [${emotionText}]을 [${shapeMapping[emotionResult]}] 별에 담아볼게요.`,
+    [emotionText]
   );
   renderMainStars();
   if (revealedStars >= stars.length) {
@@ -590,15 +707,21 @@ function description_1() {
 
 function description_2() {
   renderMainStars();
+  const emotionText = emotionMapping[emotionResult];
+  const colorText = colorMapping[emotionResult];
   renderLoadingText(
-    `감정에 따라 별이 제각기 다른 색으로 빛나기 시작해요.\n2025년에는 [${emotionMapping[emotionResult]}]을(를) 가장 자주 느끼셨네요.\n당신의 감정은 [${colorMapping[emotionResult]}]으로 빛날 거예요.`
+    `${messageResult}\n감정에 따라 별이 제각기 다른 색으로 빛나기 시작해요.\n2025년에는 [${emotionText}]을(를) 가장 자주 느끼셨네요.\n당신의 감정은 [${colorText}]으로 빛날 거예요.`,
+    [emotionText, colorText]
   );
 }
 
 function description_3() {
   renderMainStars();
+  const emotionText = emotionMapping[emotionResult];
+  const lumText = lumMapping[intensityResult];
   renderLoadingText(
-    `2025년의 스스로에게 [${emotionMapping[emotionResult]}]을 [${lumMapping[intensityResult]}] 갖고 있네요.\n당신의 감정은 [${lumMapping[intensityResult]}] 빛날 거예요.`
+    `${messageResult}\n2025년의 스스로에게 [${emotionText}]을 [${lumText}] 갖고 있네요.\n당신의 감정은 [${lumText}] 빛날 거예요.`,
+    [emotionText, lumText]
   );
 }
 
@@ -611,7 +734,7 @@ function keyPressed() {
   }
   // 인트로에서 Enter -> 다음 문장으로
   else if (keyCode === ENTER && mode === "intro") {
-    if (textCount < 4) {
+    if (textCount < 5) {
       textCount += 1; // 0→1→2→3
     } else {
       mode = "question_1"; // 마지막 문장 보고 나면 다음 화면으로
@@ -646,7 +769,7 @@ function handleBack() {
 }
 
 let shootingStars = [];
-let NUM_STARS = 120;
+let NUM_STARS = 150;
 
 function initStars() {
   back_stars = [];
@@ -654,7 +777,7 @@ function initStars() {
     back_stars.push({
       x: random(width),
       y: random(height),
-      baseSize: random(1, 3),
+      baseSize: rh(random(0.2, 4)),
       sizeOffset: random(0, TWO_PI),
       baseBrightness: random(150, 255),
       brightOffset: random(0, TWO_PI),
@@ -664,7 +787,7 @@ function initStars() {
 }
 
 function spawnShootingStar() {
-  if (random() < 0.005) {
+  if (random() < 0.003) {
     shootingStars.push({
       x: random(width),
       y: random(height * 0.4),
@@ -703,16 +826,17 @@ function backgroundStar() {
 
   noStroke();
   for (let s of back_stars) {
-    const b =
-      s.baseBrightness + sin(frameCount * s.twinkleSpeed + s.brightOffset) * 50;
+    const tw = sin(frameCount * s.twinkleSpeed + s.brightOffset);
 
-    const sz =
-      s.baseSize + sin(frameCount * s.twinkleSpeed + s.sizeOffset) * 0.5;
+    const flicker = rh(random(4));
+
+    const b = s.baseBrightness + tw * 40 * flicker;
+
+    const sz = s.baseSize + tw * 0.6 * flicker;
 
     fill(b);
     ellipse(s.x, s.y, sz, sz);
   }
-
   spawnShootingStar();
   updateShootingStars();
   drawShootingStars();
@@ -744,7 +868,7 @@ function main_frame() {
   drawImageAspect(titleDescription, width * 0.5, height * 0.8, 400, height);
 }
 
-function renderLoadingText(textString) {
+function renderLoadingText(textString, highlightTexts = []) {
   if (!dialogImage) return;
 
   const textStr = String(textString ?? "");
@@ -756,31 +880,142 @@ function renderLoadingText(textString) {
   textSize(rh(SMALL_TEXT_SIZE));
   textAlign(LEFT, TOP);
 
-  let maxLineWidth = 0;
-  for (let line of lines) {
-    const w = textWidth(line);
-    if (w > maxLineWidth) maxLineWidth = w;
-  }
+  if (highlightTexts.length > 0) {
+    let maxLineWidth = 0;
+    for (let line of lines) {
+      const w = textWidth(line);
+      if (w > maxLineWidth) maxLineWidth = w;
+    }
 
-  const bubbleWidth = maxLineWidth + paddingX * 2;
+    const bubbleWidth = maxLineWidth + paddingX * 2;
+    const lineHeight = rh(SMALL_TEXT_SIZE) + 8;
+    const textHeight = lines.length * lineHeight;
+    const bubbleHeight = textHeight + paddingY * 2;
 
-  const lineHeight = rh(SMALL_TEXT_SIZE) + 8;
-  const textHeight = lines.length * lineHeight;
+    const cx = width / 2;
+    const cy = height * 0.8;
 
-  const bubbleHeight = textHeight + paddingY * 2;
+    image(dialogImage, cx, cy, bubbleWidth, bubbleHeight + 350);
 
-  const cx = width / 2;
-  const cy = height * 0.8;
+    const startY = cy - bubbleHeight / 2;
 
-  image(dialogImage, cx, cy, bubbleWidth, bubbleHeight + 350);
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const y = startY + paddingY + i * lineHeight;
 
-  fill(0);
-  textAlign(CENTER);
+      let highlights = [];
+      for (let highlightText of highlightTexts) {
+        let searchIndex = 0;
+        while (true) {
+          const index = line.indexOf(highlightText, searchIndex);
+          if (index === -1) break;
+          highlights.push({
+            text: highlightText,
+            start: index,
+            end: index + highlightText.length,
+          });
+          searchIndex = index + 1;
+        }
+      }
+      highlights.sort((a, b) => a.start - b.start);
 
-  const startY = cy - bubbleHeight / 2;
+      let mergedHighlights = [];
+      for (let h of highlights) {
+        if (
+          mergedHighlights.length === 0 ||
+          h.start >= mergedHighlights[mergedHighlights.length - 1].end
+        ) {
+          mergedHighlights.push({ ...h });
+        } else {
+          mergedHighlights[mergedHighlights.length - 1].end = Math.max(
+            mergedHighlights[mergedHighlights.length - 1].end,
+            h.end
+          );
+          mergedHighlights[mergedHighlights.length - 1].text = line.substring(
+            mergedHighlights[mergedHighlights.length - 1].start,
+            mergedHighlights[mergedHighlights.length - 1].end
+          );
+        }
+      }
 
-  for (let i = 0; i < lines.length; i++) {
-    text(lines[i], cx, startY + i * lineHeight);
+      let segments = [];
+      let lastIndex = 0;
+
+      for (let highlight of mergedHighlights) {
+        if (highlight.start > lastIndex) {
+          segments.push({
+            text: line.substring(lastIndex, highlight.start),
+            highlight: false,
+          });
+        }
+        segments.push({
+          text: highlight.text,
+          highlight: true,
+        });
+        lastIndex = highlight.end;
+      }
+      if (lastIndex < line.length) {
+        segments.push({
+          text: line.substring(lastIndex),
+          highlight: false,
+        });
+      }
+
+      if (segments.length === 0) {
+        segments.push({ text: line, highlight: false });
+      }
+
+      textAlign(LEFT, CENTER);
+      textSize(rh(SMALL_TEXT_SIZE));
+
+      let currentLineWidth = 0;
+      for (let seg of segments) {
+        currentLineWidth += textWidth(seg.text);
+      }
+
+      let xOffset = 0;
+      const lineStartX = cx - currentLineWidth / 2;
+
+      for (let segment of segments) {
+        if (segment.highlight) {
+          fill(255, 200, 0);
+          textStyle(BOLD);
+        } else {
+          fill(0);
+          textStyle(NORMAL);
+        }
+        text(segment.text, lineStartX + xOffset, y);
+        xOffset += textWidth(segment.text);
+      }
+      textStyle(NORMAL);
+    }
+  } else {
+    let maxLineWidth = 0;
+    for (let line of lines) {
+      const w = textWidth(line);
+      if (w > maxLineWidth) maxLineWidth = w;
+    }
+
+    const bubbleWidth = maxLineWidth + paddingX * 2;
+
+    const lineHeight = rh(SMALL_TEXT_SIZE) + 8;
+    const textHeight = lines.length * lineHeight;
+
+    const bubbleHeight = textHeight + paddingY * 2;
+
+    const cx = width / 2;
+    const cy = height * 0.8;
+
+    image(dialogImage, cx, cy, bubbleWidth, bubbleHeight + 350);
+
+    fill(0);
+    textAlign(CENTER);
+
+    const startY = cy - bubbleHeight / 2;
+
+    for (let i = 0; i < lines.length; i++) {
+      text(lines[i], cx, startY + i * lineHeight);
+    }
   }
 }
 
@@ -804,8 +1039,8 @@ function intro_text() {
   textAlign(CENTER, CENTER);
 
   textSize(rh(MEDIUM_TEXT_SIZE));
-  text("--> Next (Press Enter)", width * 0.8, height * 0.9);
-  text("<-- Back (Backspace)", width * 0.2, height * 0.9);
+  text("Next (Enter) →", width * 0.8, height * 0.9);
+  text("← Back (Backspace)", width * 0.2, height * 0.9);
 
   textSize(rh(LARGE_TEXT_SIZE));
 
@@ -840,7 +1075,111 @@ function intro_text() {
     );
   } else if (textCount === 4) {
     renderStarInfo();
+  } else if (textCount === 5) {
+    renderConstellationSample();
   }
+}
+
+function renderConstellationSample() {
+  const starAreaWidth = width * 0.7;
+  const starAreaHeight = height * 0.55;
+  const starAreaCenterY = height * 0.35;
+
+  const minX = width * 0.15;
+  const maxX = width * 0.85;
+  const minY = height * 0.1;
+  const maxY = height * 0.55;
+  const starSize = rh(40);
+
+  if (!constellationSampleStarPositions) {
+    constellationSampleStarPositions = [];
+    const MIN_DIST = 50;
+
+    for (let i = 0; i < 11; i++) {
+      let x, y;
+      let safe = false;
+      let attempts = 0;
+
+      while (!safe && attempts < 200) {
+        attempts++;
+        x = random(minX, maxX);
+        y = random(minY, maxY);
+
+        safe = true;
+        for (let s of constellationSampleStarPositions) {
+          let d = dist(x, y, s.x, s.y);
+          if (d < MIN_DIST) {
+            safe = false;
+            break;
+          }
+        }
+      }
+
+      constellationSampleStarPositions.push({ x, y });
+    }
+  }
+
+  if (constellationSampleStartTime === null) {
+    constellationSampleStartTime = millis();
+  }
+
+  const elapsedTime = millis() - constellationSampleStartTime;
+  const cycleTime = (elapsedTime / 1200) % 4;
+  const currentPhase = floor(cycleTime);
+
+  if (currentPhase === 0) {
+    for (let i = 0; i < 11; i++) {
+      const pos = constellationSampleStarPositions[i];
+      if (baseStarImages[1]) {
+        drawImageAspect(baseStarImages[1], pos.x, pos.y, starSize, starSize);
+      }
+    }
+  } else if (currentPhase === 1) {
+    for (let i = 0; i < 11; i++) {
+      const pos = constellationSampleStarPositions[i];
+      if (coloredStarImages[1] && coloredStarImages[1][4]) {
+        drawImageAspect(
+          coloredStarImages[1][4],
+          pos.x,
+          pos.y,
+          starSize,
+          starSize
+        );
+      }
+    }
+  } else if (currentPhase === 2) {
+    for (let i = 0; i < 11; i++) {
+      const pos = constellationSampleStarPositions[i];
+      if (lumStarImages[1] && lumStarImages[1][4] && lumStarImages[1][4][0]) {
+        drawImageAspect(
+          lumStarImages[1][4][0],
+          pos.x,
+          pos.y,
+          starSize * 1.5,
+          starSize * 1.5
+        );
+      }
+    }
+  } else if (currentPhase === 3) {
+    drawImageAspect(
+      constellationSampleResult,
+      width * 0.5,
+      starAreaCenterY,
+      starAreaWidth,
+      starAreaHeight * 1.2
+    );
+  }
+
+  push();
+  textAlign(CENTER, CENTER);
+  textSize(rh(MEDIUM_TEXT_SIZE));
+  fill(255);
+  text(
+    "총 3개의 질문을 통해 2025년을 되돌아보세요.\n2025년의 감정을 정리하고, 2026년을 위한 소원을 담아\n당신만의 별자리로 하늘을 수놓을 수 있도록 도와드릴게요.",
+    width * 0.5,
+    height * 0.8
+  );
+  pop();
 }
 
 function drawTooltip(textStr, x, y, direction = "up") {
@@ -998,7 +1337,7 @@ let inputBox;
 
 function question_1() {
   renderQuestionText(
-    "2025년에 시간과 에너지를 가장 많이 투자한 일은 무엇이었나요?\n그 일의 성과는 어떠했나요?"
+    "2025년에 시간과 에너지를 가장 많이 투자한 일의 성과는 어떠했나요?"
   );
 
   renderAnswerInput();
@@ -1018,6 +1357,7 @@ function input_1() {
   }
   showInputWarning = false;
   getUserInput();
+  userInputs.push(userInput); // 첫 번째 답변 저장
   mode = "loading_1";
   loadingStartTime = millis();
   loadingProgress = 0;
@@ -1033,6 +1373,7 @@ function loading_1() {
         emotionResults[0] = emotionResult;
         collectedEmotions.push(emotionResult);
         totalEmotions[emotionResult] += 10;
+        messageResult = JSON.parse(result).message;
         stars.forEach((s) => {
           s.image = baseStarImages[emotionResult];
         });
@@ -1058,9 +1399,7 @@ function loading_1() {
 
 function question_2() {
   renderMainStars();
-  renderQuestionText(
-    "2025년에 가장 많이 했던 생각은 무엇인가요?\n2025년에 가장 자주 했던 말은 무엇인가요?"
-  );
+  renderQuestionText("2025년에 가장 많이 했던 생각은 무엇인가요?");
   renderAnswerInput();
 }
 
@@ -1072,6 +1411,7 @@ function input_2() {
   }
   showInputWarning = false;
   getUserInput();
+  userInputs.push(userInput); // 두 번째 답변 저장
   mode = "loading_2";
   emotionResult = null;
   factLoading = about_stars();
@@ -1079,7 +1419,7 @@ function input_2() {
 
 function loading_2() {
   renderMainStars();
-
+  loadingUI("bottom");
   if (!hasCalledLLM) {
     hasCalledLLM = true;
     callLLM(SYSTEM_PROMPT, userInput).then(async (result) => {
@@ -1088,6 +1428,7 @@ function loading_2() {
         emotionResults[1] = emotionResult;
         totalEmotions[emotionResult] += 10;
         collectedEmotions.push(emotionResult);
+        messageResult = JSON.parse(result).message;
       } catch (e) {
         console.error("JSON parse error:", result);
       }
@@ -1157,6 +1498,7 @@ function input_3() {
   }
   showInputWarning = false;
   getUserInput();
+  userInputs.push(userInput); // 세 번째 답변 저장
   emotionResult = null;
   hasCalledLLM = false;
   mode = "loading_3";
@@ -1165,7 +1507,7 @@ function input_3() {
 
 function loading_3() {
   renderMainStars();
-
+  loadingUI("bottom");
   if (!hasCalledLLM) {
     hasCalledLLM = true;
     callLLM(LUM_SYSTEM_PROMPT, userInput).then(async (result) => {
@@ -1175,6 +1517,7 @@ function loading_3() {
         emotionResults[2] = emotionResult;
         collectedEmotions.push(emotionResult);
         totalEmotions[emotionResult] += 10;
+        messageResult = JSON.parse(result).message;
       } catch (e) {
         console.error("JSON parse error:", result);
       }
@@ -1205,7 +1548,8 @@ function lumNextStar() {
   let img =
     lumStarImages[emotionResults[0]][emotionResults[1]][intensityResult];
   stars[starLumIndex].image = img;
-  stars[starLumIndex].sizeScale = 2;
+  const scale = 1.5 + intensityResult * 0.15;
+  stars[starLumIndex].sizeScale = scale;
   triggerPop(stars[starLumIndex]);
   starLumIndex++;
 
@@ -1263,6 +1607,7 @@ function input_4() {
   }
   showInputWarning = false;
   getUserInput();
+  userInputs.push(userInput); // 네 번째 답변(소원) 저장
   mode = "drag_stars";
   hasCalledLLM = false;
   emotionResult = null;
@@ -1401,16 +1746,16 @@ function mousePressed() {
       }
     }
   } else if (mode === "last") {
-    const btnX = width - width * 0.15;
-    const btnY = 100;
-    const btnW = width * 0.1;
-    const btnH = height * 0.1;
+    const btnX = width - rw(150);
+    const btnY = rh(100);
+    const btnW = rw(100);
+    const btnH = rh(100);
 
     if (
-      mouseX > btnX &&
-      mouseX < btnX + btnW &&
-      mouseY > btnY &&
-      mouseY < btnY + btnH
+      mouseX > btnX - btnW / 2 &&
+      mouseX < btnX + btnW / 2 &&
+      mouseY > btnY - btnH / 2 &&
+      mouseY < btnY + btnH / 2
     ) {
       hardResetToMain();
     }
@@ -1535,8 +1880,11 @@ function drag_stars() {
 let lastEnteredAt = 0; //last 모드 진입 시각
 
 async function goToLastMode() {
+  const token = ++lastModeTransitionToken;
   await delay(1000);
+  if (token !== lastModeTransitionToken) return;
   mode = "loadingLast";
+  loadingLastScheduled = false;
   lastEnteredAt = millis();
 }
 
@@ -1609,13 +1957,19 @@ function loadingLast() {
   textSize(rh(MEDIUM_TEXT_SIZE));
   text(dotString, width / 2, height * 0.5);
 
-  goToLastMode_2();
+  if (!loadingLastScheduled) {
+    loadingLastScheduled = true;
+    goToLastMode_2();
+  }
 }
 
 let loadingLasttime = 0;
 
 async function goToLastMode_2() {
+  const token = lastModeTransitionToken;
   await delay(5000);
+  if (token !== lastModeTransitionToken) return;
+  if (mode !== "loadingLast") return;
   mode = "last";
   loadingLasttime = millis();
 }
@@ -1625,11 +1979,38 @@ function last() {
   backgroundStar();
   draw_dragImage();
   renderMainStars();
+  push();
 
-  textSize(rh(MEDIUM_TEXT_SIZE));
   textAlign(CENTER, CENTER);
-  fill(255);
-  text(userInput, width / 2, height * 0.8);
+
+  const questions = [
+    "2025년에 시간과 에너지를 가장 많이 투자한 일의 성과는 어떠했나요?",
+    "2025년에 가장 많이 했던 생각은 무엇인가요?",
+    "지나간 2025년의 하루로 돌아갈 수 있다면, 그날의 자신에게 어떤 말을 해주고 싶나요?",
+    "2026년에 이루고 싶은 소망",
+  ];
+
+  let yPos = height * 0.72;
+  const questionTextSize = rh(24);
+  const answerTextSize = rh(20);
+  const questionLineHeight = questionTextSize + 2;
+  const answerLineHeight = answerTextSize + 4;
+
+  for (let i = 0; i < userInputs.length; i++) {
+    if (i < questions.length) {
+      textSize(questionTextSize);
+      fill(180);
+      text(questions[i], width / 2, yPos);
+      yPos += questionLineHeight;
+    }
+
+    textSize(answerTextSize);
+    fill(255);
+    text(userInputs[i], width / 2, yPos);
+    yPos += answerLineHeight + 8;
+  }
+
+  pop();
 
   if (!hasUploadedCapture) {
     let cropped = get(
@@ -1822,32 +2203,17 @@ function reset() {
   fill(255);
   textAlign(CENTER, CENTER);
 
-  const col = FlexColumn({
-    x: width - rw(250),
-    y: rh(100),
-    width: rw(200),
-    align: "center",
-    gap: rh(-24),
-  });
-
   imageMode(CENTER);
-  col.add(
-    () => {
-      drawImageAspect(resetButtonImg, 0, 0, rw(100), rh(100));
-    },
-    rh(100),
-    rw(100)
-  );
+  const resetButtonX = width - rw(150);
+  const resetButtonY = rh(100);
+
+  drawImageAspect(resetButtonImg, resetButtonX, resetButtonY, rw(100), rh(100));
 
   textSize(rh(SMALL_TEXT_SIZE));
-  const textW = textWidth("1분 후 자동으로처음 화면으로 돌아갑니다.");
-  col.add(
-    () => {
-      text("1분 후 자동으로\n처음 화면으로 돌아갑니다.", 0, 0);
-    },
-    rh(30),
-    textW
-  );
+  textAlign(CENTER, TOP);
+  fill(255);
+  const textY = resetButtonY + rh(100) / 2 + rh(10);
+  text("1분 후 자동으로\n처음 화면으로 돌아갑니다.", resetButtonX, textY);
   if (!resetScheduled) {
     resetScheduled = true;
     timer = setTimeout(() => {
@@ -1863,8 +2229,11 @@ function reset() {
 
 function hardResetToMain() {
   clearTimeout(timer);
+  lastModeTransitionToken += 1;
+  loadingLastScheduled = false;
   uploadRequestId += 1;
   userInput = "";
+  userInputs = [];
   back_stars = [];
 
   loadingProgress = 0;
@@ -1902,6 +2271,7 @@ function hardResetToMain() {
   lastStarSaved = false;
 
   lastEnteredAt = 0;
+  loadingLasttime = 0;
 
   mode = "main";
   hasStartedStarColoring = false;
