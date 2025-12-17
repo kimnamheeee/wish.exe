@@ -458,8 +458,8 @@ function renderMainStars() {
       s.image,
       s.x,
       s.y,
-      rh(40 * scale * sizeScale),
-      rh(40 * scale * sizeScale)
+      rh(55 * scale * sizeScale),
+      rh(55 * scale * sizeScale)
     );
   }
 }
@@ -1166,9 +1166,7 @@ function renderConstellationSample() {
     }
   }
 
-  if (constellationSampleStartTime === null) {
-    constellationSampleStartTime = millis();
-  }
+  constellationSampleStartTime = millis();
 
   const elapsedTime = millis() - constellationSampleStartTime;
   const cycleTime = (elapsedTime / 1200) % 4;
@@ -2154,7 +2152,7 @@ function draw_finalStars() {
 
     const scale = popEase(s.popProgress);
     const sizeScale = s.sizeScale ?? 1;
-    const baseSize = rh(40 * scale * sizeScale);
+    const baseSize = rh(55 * scale * sizeScale);
 
     drawImageAspect(s.image, x, y, baseSize, baseSize);
   }
@@ -2511,6 +2509,8 @@ function hardResetToMain() {
 
   lastEnteredAt = 0;
   loadingLasttime = 0;
+
+  constellationSampleStartTime = null;
 
   mode = "main";
   hasStartedStarColoring = false;
