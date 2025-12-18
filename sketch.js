@@ -581,6 +581,7 @@ function stars_loc() {
 let mode = "main"; // "main" 또는 "intro"
 let introFrame = 0;
 let textCount = 0;
+let previousTextCount = -1;
 
 const dragImage = Array.from({ length: 6 }, () => Array(2).fill(null));
 
@@ -1166,7 +1167,14 @@ function renderConstellationSample() {
     }
   }
 
-  constellationSampleStartTime = millis();
+  if (previousTextCount !== 5 && textCount === 5) {
+    constellationSampleStartTime = millis();
+  }
+  previousTextCount = textCount;
+
+  if (constellationSampleStartTime === null) {
+    constellationSampleStartTime = millis();
+  }
 
   const elapsedTime = millis() - constellationSampleStartTime;
   const cycleTime = (elapsedTime / 1200) % 4;
@@ -2511,6 +2519,7 @@ function hardResetToMain() {
   loadingLasttime = 0;
 
   constellationSampleStartTime = null;
+  previousTextCount = -1;
 
   mode = "main";
   hasStartedStarColoring = false;
